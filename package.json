@@ -1,0 +1,16 @@
+{
+  "name": "twitch-multigoal",
+  "version": "0.8",
+  "scripts": {
+    "start": "npx node-repl ./index.js",
+    "dev": "npx node-repl ./index.js"
+  },
+  "dependencies": {
+    "tmi.js": "^1.8.5",
+    "readline-sync": "^1.4.10",
+    "sound-play": "^1.1.0"
+  },
+  "engines": {
+    "node": ">=17"
+  }
+}
