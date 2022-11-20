@@ -200,7 +200,6 @@ const setup = () =>{
   data.controlCommandName = question("What should the controlCommandName be to control the multigoal?: ").trim()
 
   data.installed = true
-  console.log("DATA", data)
   save()
 }
 
@@ -240,7 +239,6 @@ const execute = () => {
     fileWriteHandler()
 
     chat.on("message", (channel, tags, message, self)=>{
-      console.log("tags", tags)
       if((tags.badges.moderator === "1" || tags.badges.broadcaster === "1") && message.split(" ")[0].toLowerCase() === data.controlCommandName.toLowerCase()){
         controlCommand(message.split(" "))
       }
