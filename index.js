@@ -550,7 +550,7 @@ load()
 if(!data.installed){
   setup()
 }else{
-  answer = question("Do you want to reset the multigoal? (y/n): ")
+  answer = question("Do you want to reset the multigoal (points and goal count)? (y/n): ")
   if(answer === "y"){
     resetGoal()
   }
