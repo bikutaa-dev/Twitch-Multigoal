@@ -203,19 +203,28 @@ const setup = () =>{
   save()
 }
 
+function debugtxt(...text){
+  if(data.debug){
+    for(let i=0; i<text.length; i++){
+      console.log(txt[i])
+    }
+  }
+}
+
 let chat
 const execute = () => {
   let tokenstring
   if(data.token && data.token !== "TOKEN"){
     tokenstring = "with token"
     chat = new tmi.Client(
-        {identity: {
+      {
+        identity: {
           username: data.username,
           password: data.token
-          },
+        },
         channels: [data.channel]
-        }
-      )
+      }
+    )
   }else{
     tokenstring = "without token"
     chat = new tmi.Client(
@@ -224,7 +233,6 @@ const execute = () => {
       }
     )
   }
-
 
   chat.connect().then(() => {
     console.log(`
@@ -239,14 +247,20 @@ const execute = () => {
     fileWriteHandler()
 
     chat.on("message", (channel, tags, message, self)=>{
-      if((tags.badges.moderator === "1" || tags.badges.broadcaster === "1") && message.split(" ")[0].toLowerCase() === data.controlCommandName.toLowerCase()){
-        controlCommand(message.split(" "))
+      if(tags !== null && tags !== undefined){
+        if(message.split(" ")[0].toLowerCase() === data.controlCommandName.toLowerCase()){
+          if((tags.badges.moderator === "1" || tags.badges.broadcaster === "1")){
+            controlCommand(message.split(" "))
+          }
+        }
+      }else{
+        debugtxt(tags, message)
       }
     })
 
     chat.on("cheer", (channel, userstate, message) =>{
       if(data.cheerMode !== "off"){
-        console.log(`${CurrentTime()}: Cheer from ${userstate["display-name"]}, cheered: ${userstate["bits"]}`)
+        console.log(`${CurrentTime()}: From: ${userstate["display-name"]}, cheered: ${userstate["bits"]}`)
         bitsPointCalculation(parseInt(userstate["bits"]))
       }
       
@@ -304,7 +318,6 @@ const execute = () => {
     })
 
     chat.on("subgift", (channel, username, streakMonths, recipient, methods, userstate) => {
-      console.log(channel, username, streakMonths, recipient, methods, userstate)
       if (username.toLowerCase() ===  data.channel.toLowerCase() && !data.shouldGiftedFromChannelCount) return
       
       let giftMonths = parseInt(userstate["msg-param-gift-months"])
@@ -507,9 +520,11 @@ const fileWriteHandler = () => {
     outstring = outstring.replaceAll("${points}", data.points).replaceAll("${goal}", data.goal).replaceAll("${goalCount}", data.goalCount) 
     fs.writeFile("output.txt", outstring, function (err) {
       if (err){
-        return console.log(err)
+        console.log(`${CurrentTime()}: file write error: `)
+        console.log(err)
+      }else{
+        console.log(`${CurrentTime()}:"${outstring}" written to output.txt`)
       }
-      console.log(`${CurrentTime()}:"${outstring}" written to output.txt`)
     })
     save()
 }
@@ -537,6 +552,7 @@ const commands = () => {
     removePoints(x) : remove x number of points.
     addGoals(x) : add x number of goals reached.
     removeGoals(x) : remove x number of goals reached.
+    resetGoal(): resets the multigoal.
     exit() : End the program.
     fullReset(): Will fully reset your settings and quit out
     of the script, the next time you start it it will prompt 
