@@ -353,7 +353,7 @@ const execute = () => {
                 return
               }
               case "FOUR":{
-                if(data.pointsForLevelONE !== 0){
+                if(data.pointsForLevelFOUR !== 0){
                   pointsHandler("add", data.pointsForLevelFOUR)
                 }
                 return
