@@ -26,8 +26,8 @@ only use 1-9.
 
   - As usual go into the folder and click:
   
-  `start.bat`
+    `start.bat`
 
-  you will now be prompted with new settings option the first time.
+    you will now be prompted with new settings option the first time.
 
 
