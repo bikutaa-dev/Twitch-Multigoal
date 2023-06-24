@@ -50,7 +50,8 @@ const defaultSettings = {
   "pointsForLevelSEVEN": 1,
   "pointsForLevelEIGHT": 1,
   "pointsForLevelNINE": 1,
-  "pointsForLevelTEN": 1
+  "pointsForLevelTEN": 1,
+  "version": 1
 };
 
 let answer
@@ -76,6 +77,53 @@ function saveAndExit(){
   fs.writeFile("settings.json", rawData, null, () => {
     exit()
   })
+}
+const update = () =>{
+  console.log(`\n
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    New version found
+    -------------------------------------------------------------------------------------
+    A new version have been found and a few new steps are needed to set up the new 
+    features in this update.
+    -------------------------------------------------------------------------------------
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
+    `)
+  if(!data.version){
+    console.log(`\n
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    Hype Chat Settings
+    -------------------------------------------------------------------------------------
+    Time to set up points for hype chats, here you can choose if hype chats should count
+    towards the multigoal and how much many points each level should give. The levels are
+    the steps seen when creating a hype chat, leading to a new chat color.
+    -------------------------------------------------------------------------------------
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
+    `)
+    data.hypeChatsActive = question("Should Hype chats add to the multi-goal? (off/on): ").trim().toLowerCase()
+    if(data.hypeChatsActive !== "off"){
+      data.pointsForLevelONE = parseInt(question("how many points should a level 1 hype chat be worth?(number only): ").trim())
+      data.pointsForLevelTWO = parseInt(question("how many points should a level 2 hype chat be worth?(number only): ").trim())
+      data.pointsForLevelTHREE = parseInt(question("how many points should a level 3 hype chat be worth?(number only): ").trim())
+      data.pointsForLevelFOUR = parseInt(question("how many points should a level 4 hype chat be worth?(number only): ").trim())
+      data.pointsForLevelFIVE = parseInt(question("how many points should a level 5 hype chat be worth?(number only): ").trim())
+      data.pointsForLevelSIX = parseInt(question("how many points should a level 6 hype chat be worth?(number only): ").trim())
+      data.pointsForLevelSEVEN = parseInt(question("how many points should a level 7 hype chat be worth?(number only): ").trim())
+      data.pointsForLevelEIGH = parseInt(question("how many points should a level 8 hype chat be worth?(number only): ").trim())
+      data.pointsForLevelNINE = parseInt(question("how many points should a level 9 hype chat be worth?(number only): ").trim())
+      data.pointsForLevelTEN = parseInt(question("how many points should a level 10 hype chat be worth?(number only): ").trim())
+    } 
+    data.version = 1 
+  }
+  save()
+
+  console.log(`\n
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    Version update done
+    -------------------------------------------------------------------------------------
+    Your new settings is now saved and the script will continue like usual.
+    -------------------------------------------------------------------------------------
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
+    `)  
 }
 
 const setup = () =>{
@@ -152,7 +200,7 @@ const setup = () =>{
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
   `)
   data.hypeChatsActive = question("Should Hype chats add to the multi-goal? (off/on): ").trim().toLowerCase()
-  if(data.cheerMode !== "off"){
+  if(data.hypeChatsActive !== "off"){
     data.pointsForLevelONE = parseInt(question("how many points should a level 1 hype chat be worth?(number only): ").trim())
     data.pointsForLevelTWO = parseInt(question("how many points should a level 2 hype chat be worth?(number only): ").trim())
     data.pointsForLevelTHREE = parseInt(question("how many points should a level 3 hype chat be worth?(number only): ").trim())
@@ -283,70 +331,71 @@ const execute = () => {
     chat.on("raw_message", (msg) => {
       if(msg.tags){
         if(msg.tags["pinned-chat-paid-level"]){
-          console.log(`${CurrentTime()}: From: ${msg.tags["display-name"]}, hype chat: level ${msg.tags["pinned-chat-paid-level"]}`)
-          switch(msg.tags["pinned-chat-paid-level"]){
-            case "ONE":{
-              if(data.pointsForLevelONE !== 0){
-                pointsHandler("add", data.pointsForLevelONE)
+          if(data.hypeChatsActive === "on"){
+            console.log(`${CurrentTime()}: From: ${msg.tags["display-name"]}, hype chat: level ${msg.tags["pinned-chat-paid-level"]}`)
+            switch(msg.tags["pinned-chat-paid-level"]){
+              case "ONE":{
+                if(data.pointsForLevelONE !== 0){
+                  pointsHandler("add", data.pointsForLevelONE)
+                }
+                return
               }
-              return
-            }
-            case "TWO":{
-              if(data.pointsForLevelTWO !== 0){
-                pointsHandler("add", data.pointsForLevelTWO)
+              case "TWO":{
+                if(data.pointsForLevelTWO !== 0){
+                  pointsHandler("add", data.pointsForLevelTWO)
+                }
+                return
               }
-              return
-            }
-            case "THREE":{
-              if(data.pointsForLevelTHREE !== 0){
-                pointsHandler("add", data.pointsForLevelTHREE)
+              case "THREE":{
+                if(data.pointsForLevelTHREE !== 0){
+                  pointsHandler("add", data.pointsForLevelTHREE)
+                }
+                return
               }
-              return
-            }
-            case "FOUR":{
-              if(data.pointsForLevelONE !== 0){
-                pointsHandler("add", data.pointsForLevelFOUR)
+              case "FOUR":{
+                if(data.pointsForLevelONE !== 0){
+                  pointsHandler("add", data.pointsForLevelFOUR)
+                }
+                return
               }
-              return
-            }
-            case "FIVE":{
-              if(data.pointsForLevelFIVE !== 0){
-                pointsHandler("add", data.pointsForLevelFIVE)
+              case "FIVE":{
+                if(data.pointsForLevelFIVE !== 0){
+                  pointsHandler("add", data.pointsForLevelFIVE)
+                }
+                return
               }
-              return
-            }
-            case "SIX":{
-              if(data.pointsForLevelSIX !== 0){
-                pointsHandler("add", data.pointsForLevelSIX)
+              case "SIX":{
+                if(data.pointsForLevelSIX !== 0){
+                  pointsHandler("add", data.pointsForLevelSIX)
+                }
+                return
               }
-              return
-            }
-            case "SEVEN":{
-              if(data.pointsForLevelSEVEN !== 0){
-                pointsHandler("add", data.pointsForLevelSEVEN)
+              case "SEVEN":{
+                if(data.pointsForLevelSEVEN !== 0){
+                  pointsHandler("add", data.pointsForLevelSEVEN)
+                }
+                return
               }
-              return
-            }
-            case "EIGHT":{
-              if(data.pointsForLevelEIGHT !== 0){
-                pointsHandler("add", data.pointsForLevelEIGHT)
+              case "EIGHT":{
+                if(data.pointsForLevelEIGHT !== 0){
+                  pointsHandler("add", data.pointsForLevelEIGHT)
+                }
+                return
               }
-              return
-            }
-            case "NINE":{
-              if(data.pointsForLevelNINE !== 0){
-                pointsHandler("add", data.pointsForLevelNINE)
+              case "NINE":{
+                if(data.pointsForLevelNINE !== 0){
+                  pointsHandler("add", data.pointsForLevelNINE)
+                }
+                return
               }
-              return
-            }
-            case "TEN":{
-              if(data.pointsForLevelTEN !== 0){
-                pointsHandler("add", data.pointsForLevelTEN)
+              case "TEN":{
+                if(data.pointsForLevelTEN !== 0){
+                  pointsHandler("add", data.pointsForLevelTEN)
+                }
+                return
               }
-              return
             }
           }
-        
         }
       }
 
@@ -672,6 +721,9 @@ load()
 if(!data.installed){
   setup()
 }else{
+  if(!data.version){
+    update()
+  }
   answer = question("Do you want to reset the multigoal (points and goal count)? (y/n): ")
   if(answer === "y"){
     resetGoal()
