@@ -108,7 +108,7 @@ const update = () =>{
       data.pointsForLevelFIVE = parseInt(question("how many points should a level 5 hype chat be worth?(number only): ").trim())
       data.pointsForLevelSIX = parseInt(question("how many points should a level 6 hype chat be worth?(number only): ").trim())
       data.pointsForLevelSEVEN = parseInt(question("how many points should a level 7 hype chat be worth?(number only): ").trim())
-      data.pointsForLevelEIGH = parseInt(question("how many points should a level 8 hype chat be worth?(number only): ").trim())
+      data.pointsForLevelEIGHT = parseInt(question("how many points should a level 8 hype chat be worth?(number only): ").trim())
       data.pointsForLevelNINE = parseInt(question("how many points should a level 9 hype chat be worth?(number only): ").trim())
       data.pointsForLevelTEN = parseInt(question("how many points should a level 10 hype chat be worth?(number only): ").trim())
     } 
@@ -208,7 +208,7 @@ const setup = () =>{
     data.pointsForLevelFIVE = parseInt(question("how many points should a level 5 hype chat be worth?(number only): ").trim())
     data.pointsForLevelSIX = parseInt(question("how many points should a level 6 hype chat be worth?(number only): ").trim())
     data.pointsForLevelSEVEN = parseInt(question("how many points should a level 7 hype chat be worth?(number only): ").trim())
-    data.pointsForLevelEIGH = parseInt(question("how many points should a level 8 hype chat be worth?(number only): ").trim())
+    data.pointsForLevelEIGHT = parseInt(question("how many points should a level 8 hype chat be worth?(number only): ").trim())
     data.pointsForLevelNINE = parseInt(question("how many points should a level 9 hype chat be worth?(number only): ").trim())
     data.pointsForLevelTEN = parseInt(question("how many points should a level 10 hype chat be worth?(number only): ").trim())
   }
