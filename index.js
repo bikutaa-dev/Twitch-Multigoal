@@ -39,7 +39,18 @@ const defaultSettings = {
   "cheerMode": "off",
   "pointsToAddPerCheer": 1,
   "bitsToIncreasePoints": 500,
-  "controlCommandName": "!goaledit"
+  "controlCommandName": "!goaledit",
+  "hypeChatsActive": false,
+  "pointsForLevelONE": 0,
+  "pointsForLevelTWO": 1,
+  "pointsForLevelTHREE": 1,
+  "pointsForLevelFOUR": 1,
+  "pointsForLevelFIVE": 1,
+  "pointsForLevelSIX": 1,
+  "pointsForLevelSEVEN": 1,
+  "pointsForLevelEIGHT": 1,
+  "pointsForLevelNINE": 1,
+  "pointsForLevelTEN": 1
 };
 
 let answer
@@ -128,6 +139,30 @@ const setup = () =>{
   if(data.cheerMode !== "off"){
     data.bitsToIncreasePoints = parseInt(question("How much needs to be cheered to increase the points?(number only): ").trim())
     data.pointsToAddPerCheer = parseInt(question("How many points should be added when reached? (numbers only): ").trim())
+  }
+
+  console.log(`\n
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    Hype Chat Settings
+    -------------------------------------------------------------------------------------
+    Time to set up points for hype chats, here you can choose if hype chats should count
+    towards the multigoal and how much many points each level should give. The levels are
+    the steps seen when creating a hype chat, leading to a new chat color.
+    -------------------------------------------------------------------------------------
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
+  `)
+  data.hypeChatsActive = question("Should Hype chats add to the multi-goal? (off/on): ").trim().toLowerCase()
+  if(data.cheerMode !== "off"){
+    data.pointsForLevelONE = parseInt(question("how many points should a level 1 hype chat be worth?(number only): ").trim())
+    data.pointsForLevelTWO = parseInt(question("how many points should a level 2 hype chat be worth?(number only): ").trim())
+    data.pointsForLevelTHREE = parseInt(question("how many points should a level 3 hype chat be worth?(number only): ").trim())
+    data.pointsForLevelFOUR = parseInt(question("how many points should a level 4 hype chat be worth?(number only): ").trim())
+    data.pointsForLevelFIVE = parseInt(question("how many points should a level 5 hype chat be worth?(number only): ").trim())
+    data.pointsForLevelSIX = parseInt(question("how many points should a level 6 hype chat be worth?(number only): ").trim())
+    data.pointsForLevelSEVEN = parseInt(question("how many points should a level 7 hype chat be worth?(number only): ").trim())
+    data.pointsForLevelEIGH = parseInt(question("how many points should a level 8 hype chat be worth?(number only): ").trim())
+    data.pointsForLevelNINE = parseInt(question("how many points should a level 9 hype chat be worth?(number only): ").trim())
+    data.pointsForLevelTEN = parseInt(question("how many points should a level 10 hype chat be worth?(number only): ").trim())
   }
 
   console.log(`\n
@@ -245,6 +280,77 @@ const execute = () => {
     chat.removeAllListeners()
 
     fileWriteHandler()
+    chat.on("raw_message", (msg) => {
+      if(msg.tags){
+        if(msg.tags["pinned-chat-paid-level"]){
+          console.log(`${CurrentTime()}: From: ${msg.tags["display-name"]}, hype chat: level ${msg.tags["pinned-chat-paid-level"]}`)
+          switch(msg.tags["pinned-chat-paid-level"]){
+            case "ONE":{
+              if(data.pointsForLevelONE !== 0){
+                pointsHandler("add", data.pointsForLevelONE)
+              }
+              return
+            }
+            case "TWO":{
+              if(data.pointsForLevelTWO !== 0){
+                pointsHandler("add", data.pointsForLevelTWO)
+              }
+              return
+            }
+            case "THREE":{
+              if(data.pointsForLevelTHREE !== 0){
+                pointsHandler("add", data.pointsForLevelTHREE)
+              }
+              return
+            }
+            case "FOUR":{
+              if(data.pointsForLevelONE !== 0){
+                pointsHandler("add", data.pointsForLevelFOUR)
+              }
+              return
+            }
+            case "FIVE":{
+              if(data.pointsForLevelFIVE !== 0){
+                pointsHandler("add", data.pointsForLevelFIVE)
+              }
+              return
+            }
+            case "SIX":{
+              if(data.pointsForLevelSIX !== 0){
+                pointsHandler("add", data.pointsForLevelSIX)
+              }
+              return
+            }
+            case "SEVEN":{
+              if(data.pointsForLevelSEVEN !== 0){
+                pointsHandler("add", data.pointsForLevelSEVEN)
+              }
+              return
+            }
+            case "EIGHT":{
+              if(data.pointsForLevelEIGHT !== 0){
+                pointsHandler("add", data.pointsForLevelEIGHT)
+              }
+              return
+            }
+            case "NINE":{
+              if(data.pointsForLevelNINE !== 0){
+                pointsHandler("add", data.pointsForLevelNINE)
+              }
+              return
+            }
+            case "TEN":{
+              if(data.pointsForLevelTEN !== 0){
+                pointsHandler("add", data.pointsForLevelTEN)
+              }
+              return
+            }
+          }
+        
+        }
+      }
+
+    })
 
     chat.on("message", (channel, tags, message, self)=>{
       if(tags !== null && tags !== undefined){
