@@ -42,7 +42,7 @@ only use 1-9.
     you will now be prompted with new settings option the first time.
 
 
-## Problem Solving<
-  - If you run into an error where in mention the folder npm not existing, just make a folder named npm at the given location.
+## Problem Solving
+  - If you run into an error where in mention the folder npm not existing, "no such file or folder", just make a folder named npm at the given location.
 
 
