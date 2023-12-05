@@ -40,34 +40,9 @@ const defaultSettings = {
   "pointsToAddPerCheer": 1,
   "bitsToIncreasePoints": 500,
   "controlCommandName": "!goaledit",
-  "hypeChatsActive":  "off",
-  "pointsForLevelONE": 0,
-  "pointsForLevelTWO": 1,
-  "pointsForLevelTHREE": 1,
-  "pointsForLevelFOUR": 1,
-  "pointsForLevelFIVE": 1,
-  "pointsForLevelSIX": 1,
-  "pointsForLevelSEVEN": 1,
-  "pointsForLevelEIGHT": 1,
-  "pointsForLevelNINE": 1,
-  "pointsForLevelTEN": 1,
-  "automaticBaseLevel": "TWO",
-  "pointsToAddPerHypeChat": 1,
-  "version": 2
+  "version": 1
 };
 
-const HypeLeveltoPoints = {
-  "ONE": 1,
-  "TWO": 5,
-  "THREE": 10,
-  "FOUR": 20,
-  "FIVE": 50,
-  "SIX": 100,
-  "SEVEN": 200,
-  "EIGHT": 300,
-  "NINE": 400,
-  "TEN": 500
-}
 
 let answer
 const load = () =>{
@@ -98,8 +73,8 @@ const update = () =>{
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     New version found
     -------------------------------------------------------------------------------------
-    A new version have been found and a few new steps are needed to set up the new 
-    features in this update.
+    A new version have been found and so new settings will apply and new settings might be
+    asked for.
     -------------------------------------------------------------------------------------
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
     `)
@@ -141,8 +116,60 @@ const update = () =>{
     }else{
       data.hypeChatsActive = "off"
     }
+    data.version = 2
   }
-  data.version === 2
+  if(!data.version || data.version === 2){
+    if("hypeChatsActive" in data){
+      delete data.hypeChatsActive
+    }
+    if("pointsForLevelONE" in data){
+      delete data.pointsForLevelONE
+    }
+    if("pointsForLevelTWO" in data){
+      delete data.pointsForLevelTWO
+    }
+    if("pointsForLevelTHREE" in data){
+      delete data.pointsForLevelTHREE
+    }
+    if("pointsForLevelFOUR" in data){
+      delete data.pointsForLevelFOUR
+    }
+    if("pointsForLevelFIVE" in data){
+      delete data.pointsForLevelFIVE
+    }
+    if("pointsForLevelSIX" in data){
+      delete data.pointsForLevelSIX
+    }
+    if("pointsForLevelSEVEN" in data){
+      delete data.pointsForLevelSEVEN
+    }
+    if("pointsForLevelEIGHT" in data){
+      delete data.pointsForLevelEIGHT
+    }
+    if("pointsForLevelNINE" in data){
+      delete data.pointsForLevelNINE
+    }
+    if("pointsForLevelTEN" in data){
+      delete data.pointsForLevelTEN
+    }
+    if("automaticBaseLevel" in data){
+      delete data.automaticBaseLevel
+    }
+    if("pointsToAddPerHypeChat" in data){
+      delete data.pointsToAddPerHypeChat
+    }
+    console.log(`\n
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    Hype Chat Settings removed
+    -------------------------------------------------------------------------------------
+    The hype chat settings have been removed as the old hype chat is no longer a thing on
+    twitch and is now replaced with bits.
+    -------------------------------------------------------------------------------------
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
+    `)
+
+  }
+  data.version = 3
   save()
 
   console.log(`\n
@@ -217,46 +244,6 @@ const setup = () =>{
     data.bitsToIncreasePoints = parseInt(question("How much needs to be cheered to increase the points?(number only): ").trim())
     data.pointsToAddPerCheer = parseInt(question("How many points should be added when reached? (numbers only): ").trim())
   }
-
-  console.log(`\n
-    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    Hype Chat Settings
-    -------------------------------------------------------------------------------------
-    Time to set up points for hype chats, here you can choose if hype chats should count
-    towards the multigoal and how much many points each level should give. There is two 
-    modes for Hype chat, these are: \n
-    automatic: You set the base Hype chat level where one point should be added towards
-    the goal, then the scripts figure out how much other levels should give. Example if
-    you set it to 3, it will require three level 1 or two level 2 to get one point, or 
-    a level 4 will give 2 points, it's all accumulative. \n
-    manual: You set how many points each hype level is worth, these can be decimal numbers.
-    these are also accumulative, so if you have one that is less then 0, let's say 0.5,
-    it will require two of those to get one point.\n
-    decimal numbers are allowed for manual mode up tp 2 decimal places, the decimal needs
-    to be written with a dot. So for example 1.5 and not 1,5.
-    -------------------------------------------------------------------------------------
-    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
-  `)
-  data.hypeChatsActive = question("What mode do you want for Hype chats? (off/manual/automatic): ").trim().toLowerCase()
-  if(data.hypeChatsActive === "manual"){
-    data.pointsForLevelONE = parseFloat(question("how many points should a level 1 hype chat be worth?(number only, decimal allowed): ").trim())
-    data.pointsForLevelTWO = parseFloat(question("how many points should a level 2 hype chat be worth?(number only, decimal allowed): ").trim())
-    data.pointsForLevelTHREE = parseFloat(question("how many points should a level 3 hype chat be worth?(number only, decimal allowed): ").trim())
-    data.pointsForLevelFOUR = parseFloat(question("how many points should a level 4 hype chat be worth?(number only, decimal allowed): ").trim())
-    data.pointsForLevelFIVE = parseFloat(question("how many points should a level 5 hype chat be worth?(number only, decimal allowed): ").trim())
-    data.pointsForLevelSIX = parseFloat(question("how many points should a level 6 hype chat be worth?(number only, decimal allowed): ").trim())
-    data.pointsForLevelSEVEN = parseFloat(question("how many points should a level 7 hype chat be worth?(number only, decimal allowed): ").trim())
-    data.pointsForLevelEIGHT = parseFloat(question("how many points should a level 8 hype chat be worth?(number only, decimal allowed): ").trim())
-    data.pointsForLevelNINE = parseFloat(question("how many points should a level 9 hype chat be worth?(number only, decimal allowed): ").trim())
-    data.pointsForLevelTEN = parseFloat(question("how many points should a level 10 hype chat be worth?(number only, decimal allowed): ").trim())
-  }else if(data.hypeChatsActive === "automatic"){
-    data.automaticBaseLevel = parseInt(question("What hype chat level should be the base for getting points? (numbers only): ").trim())
-    convertLevelToString()
-  }else{
-    data.hypeChatsActive = "off"
-  }
-
-
   
   console.log(`\n
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -330,7 +317,6 @@ const setup = () =>{
   data.installed = true
   save()
 }
-
 function convertLevelToString(){
   switch(data.automaticBaseLevel){
     case 1: data.automaticBaseLevel = "ONE"; break;
@@ -388,17 +374,6 @@ const execute = () => {
     chat.removeAllListeners()
 
     fileWriteHandler()
-    chat.on("raw_message", (msg) => {
-      if(msg.tags){
-        if(msg.tags["pinned-chat-paid-level"]){
-          if(data.hypeChatsActive !== "off"){
-            console.log(`${CurrentTime()}: From: ${msg.tags["display-name"]}, hype chat: level ${msg.tags["pinned-chat-paid-level"]}`)
-            hypeChatManager(msg.tags["pinned-chat-paid-level"])
-          }
-        }
-      }
-
-    })
 
     chat.on("message", (channel, tags, message, self)=>{
       if(tags !== null && tags !== undefined){
@@ -508,96 +483,6 @@ const execute = () => {
 }
 
 
-function hypeChatManager(level){
-  if(data.hypeChatsActive === "automatic"){
-    let timesReached = 0
-    hypeChatTotal += HypeLeveltoPoints[level]
-    timesReached = Math.floor(hypeChatTotal/HypeLeveltoPoints[data.automaticBaseLevel])
-    if(timesReached >= 1){
-      pointsHandler("add", timesReached)
-      hypeChatTotal = hypeChatTotal%HypeLeveltoPoints[data.automaticBaseLevel]
-    }
-  }else if(data.hypeChatsActive === "manual"){
-    switch(level){
-      case "ONE":{
-        if(data.pointsForLevelONE !== 0){
-          manualHypeChatPointsAdd(data.pointsForLevelONE);
-        }
-        return
-      }
-      case "TWO":{
-        if(data.pointsForLevelTWO !== 0){
-          manualHypeChatPointsAdd(data.pointsForLevelTWO);
-        }
-        return
-      }
-      case "THREE":{
-        if(data.pointsForLevelTHREE !== 0){
-          manualHypeChatPointsAdd(data.pointsForLevelTHREE);
-        }
-        return
-      }
-      case "FOUR":{
-        if(data.pointsForLevelFOUR !== 0){
-          manualHypeChatPointsAdd(data.pointsForLevelFOUR);
-        }
-        return
-      }
-      case "FIVE":{
-        if(data.pointsForLevelFIVE !== 0){
-          manualHypeChatPointsAdd(data.pointsForLevelFIVE);
-        }
-        return
-      }
-      case "SIX":{
-        if(data.pointsForLevelSIX !== 0){
-          manualHypeChatPointsAdd(data.pointsForLevelSIX);
-        }
-        return
-      }
-      case "SEVEN":{
-        if(data.pointsForLevelSEVEN !== 0){
-          manualHypeChatPointsAdd(data.pointsForLevelSEVEN);
-        }
-        return
-      }
-      case "EIGHT":{
-        if(data.pointsForLevelEIGHT !== 0){
-          manualHypeChatPointsAdd(data.pointsForLevelEIGHT);
-        }
-        return
-      }
-      case "NINE":{
-        if(data.pointsForLevelNINE !== 0){
-          manualHypeChatPointsAdd(data.pointsForLevelNINE);
-        }
-        return
-      }
-      case "TEN":{
-        if(data.pointsForLevelTEN !== 0){
-          manualHypeChatPointsAdd(data.pointsForLevelTEN);
-        }
-        return
-      }
-    }
-  }
-}
-
-function sumDec(a, b, positions){
-  const factor = Math.pow(10, positions)
-  return (a.toFixed(positions) * factor + b.toFixed(positions) * factor) / factor
-}
-
-let hypeChatTotal = 0
-function manualHypeChatPointsAdd(points) {
-  hypeChatTotal = sumDec(hypeChatTotal, points, 2);
-  if (hypeChatTotal >= 1) {
-    let timesReached = Math.floor(hypeChatTotal / 1);
-    pointsHandler("add", timesReached);
-    hypeChatTotal = hypeChatTotal % 1;
-  }
-}
-
 let totalCheered = 0
 function bitsPointCalculation(bits){
   let timesReached = 0
@@ -681,6 +566,10 @@ const addPoints = (change) => {
 }
 
 function controlCommand(words){
+  if (words.length === 1) {
+    console.log(`${CurrentTime()}: ${data.controlCommandName} needs a parameter/option`)
+    return
+  }  
   switch(words[1].toLowerCase()){
     case("reset"):{
       resetGoal()
@@ -733,6 +622,10 @@ function controlCommand(words){
         removeGoals(1)
       }
       break
+    }
+    default:{
+      console.log(`${CurrentTime()}: ${words[1]} is not a valid option for ${data.controlCommandName}`)
+      return
     }
   }
 }
@@ -813,7 +706,7 @@ load()
 if(!data.installed){
   setup()
 }else{
-  if(!data.version || data.version < 2){
+  if(!data.version || data.version < 3){
     update()
   }
   answer = question("Do you want to reset the multigoal (points and goal count)? (y/n): ")
