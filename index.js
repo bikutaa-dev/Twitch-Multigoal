@@ -588,7 +588,6 @@ function calculateTimesReachedWithDifficulty(change){
     currentPoints -= data.goal
     timesReached += 1
     data.goal += data.difficultyPointIncrease
-    console.log(`${CurrentTime()}: currentPoints: ${currentPoints}, timesReached: ${timesReached}, goal: ${data.goal}`)
   }
 
   data.points = currentPoints
@@ -601,7 +600,6 @@ const addPoints = (change) => {
   let timesReached = 0
   if(data.difficultyMode){
       timesReached = calculateTimesReachedWithDifficulty(data.points)
-      console.log(`${CurrentTime()}: timesReached: ${timesReached}`)
   }else{
     timesReached = Math.floor(data.points/data.goal)
     data.points = data.points%data.goal
