@@ -1,7 +1,8 @@
 ## What is Twitch Multigoal?
 A simple script I wrote for a few friends that wanted interactivity with their community by having a goal that could be reached multiple time
 over a stream. With subscriptions (normal or gifted), hype chats and cheers the chat can collectivly colllect points toward the set goal. Up
-to you what the reward is for reaching the goal, but when a goal is reached it resets and starts all over again.
+to you what the reward is for reaching the goal, but when a goal is reached it resets and starts all over again, now also with the option to
+increase the goal each time it has been reached.
 
 The scripts allow you to set up the points value for subs, hype chats and cheers and also what the goal is. It also supports:
 - Sound when the goal has been reached.
