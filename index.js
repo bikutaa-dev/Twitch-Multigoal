@@ -40,7 +40,9 @@ const defaultSettings = {
   "pointsToAddPerCheer": 1,
   "bitsToIncreasePoints": 500,
   "controlCommandName": "!goaledit",
-  "version": 1
+  "difficultyMode": false,
+  "difficultyPointIncrease": 1,
+  "version": 4
 };
 
 
@@ -167,9 +169,26 @@ const update = () =>{
     -------------------------------------------------------------------------------------
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
     `)
-
+    data.version = 3
   }
-  data.version = 3
+
+  if(!data.version || data.version === 3){
+    data.difficultyMode = false
+    data.difficultyPointIncrease = 1
+    console.log(`\n
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    New settings (Goal Increase Mode)
+    -------------------------------------------------------------------------------------
+    Settings for the new difficulty mode have been added, this mode will increase the goal
+    each time it has been reached, the amount it will increase by can be set when setting 
+    up the script. By default it is off, if you want to use this feature you need to reset
+    the script, this can be done by using the following command in CMD: fullReset()
+    -------------------------------------------------------------------------------------
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
+    `)
+  }
+
+  data.version = 4
   save()
 
   console.log(`\n
@@ -192,7 +211,9 @@ const setup = () =>{
     \${points} : current points.\n
     \${goal} : the goal set.\n
     \${goalCount} : numbers of time the goal has been reached. \n
-    an example would be "\${points}/\${goal} points to reach goal number #\${goalCount}"
+    an example would be "\${points}/\${goal} points to reach goal number #\${goalCount}"\n
+    This will also ask if you want to enable difficulty mode, this will increase the goal
+    each time it's reached by the given amount.
     -------------------------------------------------------------------------------------
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
   `)
@@ -202,6 +223,13 @@ const setup = () =>{
   data.defaultGoalCount = parseInt(question("What count should the multigoal start at?: ").trim())
   data.goalCount = data.defaultGoalCount
   data.outputString = question("How should the text in output.txt be formated?: ").trim()
+  let difficultyModeAnswer = question("Do you want to enable difficulty mode(this will increase the goal each time its reached? (y/n): ").trim().toLowerCase()
+  if(difficultyModeAnswer === "y"){
+    data.difficultyMode = true
+    data.difficultyPointIncrease = parseInt(question("How much should the goal increase by each time it's reached?(number only): ").trim())
+  }else{
+    data.difficultyMode = false
+  }
 
   console.log(`\n
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -509,18 +537,25 @@ function bitsPointCalculation(bits){
     }
   }
 }
-
+let superChange = 0
+let pointsHandelerTimeoutID
 function pointsHandler(typeOfChange, change){
-  switch(typeOfChange){
-    case "add":{
-      addPoints(change)
-      break;
+  superChange += change
+  clearTimeout(pointsHandelerTimeoutID)
+  pointsHandelerTimeoutID = setTimeout(()=>{
+    switch(typeOfChange){
+      case "add":{
+        addPoints(superChange)
+        break;
+      }
+      case "remove":{
+        removePoints(superChange)
+        break
+      }
     }
-    case "remove":{
-      removePoints(change)
-      break
-    }
-  }
+    superChange = 0
+  }, 333)
+  
 
 }
 
@@ -539,29 +574,54 @@ const removePoints = (change) => {
   fileWriteHandler()
 }
 
-let timeoutID
+function calculateTimesReachedWithDifficulty(change){
+  if(data.goal > change) return 0;
+  
+  let timesReached = 0
+  let currentPoints = change
+
+  while(currentPoints > 0){
+    if(data.goal > currentPoints){
+      data.points = currentPoints
+      return timesReached
+    }
+    currentPoints -= data.goal
+    timesReached += 1
+    data.goal += data.difficultyPointIncrease
+    console.log(`${CurrentTime()}: currentPoints: ${currentPoints}, timesReached: ${timesReached}, goal: ${data.goal}`)
+  }
+
+  data.points = currentPoints
+  return timesReached
+}
+
+
 const addPoints = (change) => {
   data.points += change
-  let timesReached = Math.floor(data.points/data.goal)
+  let timesReached = 0
+  if(data.difficultyMode){
+      timesReached = calculateTimesReachedWithDifficulty(data.points)
+      console.log(`${CurrentTime()}: timesReached: ${timesReached}`)
+  }else{
+    timesReached = Math.floor(data.points/data.goal)
+    data.points = data.points%data.goal
+  }
   if (timesReached >= 1) {
-    clearTimeout(timeoutID)
-    timeoutID = setTimeout(() => {
-      if(data.chatMessage !== "" && data.chatMessage !== null && data.chatMessage !== undefined){
-        chat.say(data.channel, data.chatMessage.replaceAll("${points}", data.points).replaceAll("${goal}", data.goal).replaceAll("${goalCount}", data.goalCount)).catch((err) => {console.log(err)})
-      }
-      if(data.soundPath !== "" && data.soundPath !== null && data.soundPath !== undefined){
-        sound.play(data.soundPath, data.soundVolume).catch((err)=>{
-          console.log("sound error:")
-          console.log(err)
-        })
-      }
-      data.goalCount += timesReached
+    data.goalCount += timesReached
+    if(data.chatMessage !== "" && data.chatMessage !== null && data.chatMessage !== undefined){
+      chat.say(data.channel, data.chatMessage.replaceAll("${points}", data.points).replaceAll("${goal}", data.goal).replaceAll("${goalCount}", data.goalCount)).catch((err) => {console.log(err)})
+    }
+    if(data.soundPath !== "" && data.soundPath !== null && data.soundPath !== undefined){
+      sound.play(data.soundPath, data.soundVolume).catch((err)=>{
+        console.log("sound error:")
+        console.log(err)
+      })
+    }
+    fileWriteHandler()
 
-      data.points = data.points%data.goal
-      fileWriteHandler()
-    }, 333)
   }else{
     fileWriteHandler()
+    
   }
 }
 
@@ -637,6 +697,7 @@ const CurrentTime = () => {
 const resetGoal = () => {
   data.points = 0
   data.goalCount = data.defaultGoalCount
+  data.goal = data.defaultGoal
   totalCheered = 0
   fileWriteHandler()
 } 
@@ -653,7 +714,7 @@ const removeGoals = (change) => {
   fileWriteHandler()
 }
 
-const fileWriteHandler = () => {
+const fileWriteHandler = async () => {
     let outstring = data.outputString
     outstring = outstring.replaceAll("${points}", data.points).replaceAll("${goal}", data.goal).replaceAll("${goalCount}", data.goalCount) 
     fs.writeFile("output.txt", outstring, function (err) {
