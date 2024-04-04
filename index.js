@@ -44,7 +44,7 @@ const defaultSettings = {
   "difficultyPointIncrease": 1,
   "upgradedSubsAllowed": false,
   "pointsPerUpgradedSub": 1, 
-  "version": 4
+  "version": 5
 };
 
 
