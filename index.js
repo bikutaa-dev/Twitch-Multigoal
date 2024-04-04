@@ -199,10 +199,10 @@ const update = () =>{
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     "Upgraded subscription settings"
     -------------------------------------------------------------------------------------
-    The Multigoal can now add points if someone "uppgrades" their prime or gifted subscription
+    The Multigoal can now add points if someone "upgrades" their prime or gifted subscription
     to a regular subscription. So you can now award people who uppgrade their subscription. 
-    Be aware that this can create a "double" dib that month as when their subscription 
-    renews the same month they uppgraded, they will get points for that too.
+    Be aware that this can create a "double" dip that month as when their subscription 
+    renews the same month they upgraded, they will get points for that too.
     -------------------------------------------------------------------------------------
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
     `)
@@ -285,9 +285,9 @@ const setup = () =>{
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     "Upgraded subscription settings"
     -------------------------------------------------------------------------------------
-    Do you want to reward people who uppgrade their prime or gifted subscription to a regular
-    subscription? Be aware that this can create a "double" dib that month as when their 
-    subscription renews the same month they uppgraded, they will get points for that too.
+    Do you want to reward people who upgrade their prime or gifted subscription to a regular
+    subscription? Be aware that this can create a "double" dip that month as when their 
+    subscription renews the same month they upgraded, they will get points for that too.
     -------------------------------------------------------------------------------------
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
     `)
