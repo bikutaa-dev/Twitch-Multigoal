@@ -1,6 +1,6 @@
 {
   "name": "twitch-multigoal",
-  "version": "1.3",
+  "version": "1.4",
   "scripts": {
     "start": "npx node-repl ./index.js",
     "dev": "npx node-repl ./index.js"

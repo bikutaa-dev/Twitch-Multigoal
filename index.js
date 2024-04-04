@@ -42,6 +42,8 @@ const defaultSettings = {
   "controlCommandName": "!goaledit",
   "difficultyMode": false,
   "difficultyPointIncrease": 1,
+  "upgradedSubsAllowed": false,
+  "pointsPerUpgradedSub": 1, 
   "version": 4
 };
 
@@ -187,8 +189,36 @@ const update = () =>{
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
     `)
   }
-
+  
   data.version = 4
+
+  if(!data.version || data.version === 4){
+    data.upgradedSubsAllowed = false
+    data.pointsPerUpgradedSub = 1
+    console.log(`\n
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    "Upgraded subscription settings"
+    -------------------------------------------------------------------------------------
+    The Multigoal can now add points if someone "uppgrades" their prime or gifted subscription
+    to a regular subscription. So you can now award people who uppgrade their subscription. 
+    Be aware that this can create a "double" dib that month as when their subscription 
+    renews the same month they uppgraded, they will get points for that too.
+    -------------------------------------------------------------------------------------
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
+    `)
+    
+    let updateUpgradedQuestion = question("You want to enabled points for 'upgraded' prime/gifted subscriptions (y/n): ").trim().toLowerCase()
+
+    if(updateUpgradedQuestion === "y"){
+      data.upgradedSubsAllowed = true
+      data.pointsPerUpgradedSub = parseInt(question("How many points should be added when someone 'uppgrades' their subscription? (number only): ").trim()) 
+    }else{
+      data.upgradedSubsAllowed = false
+      data.pointsPerUpgradedSub = 1
+    }
+  }
+
+  data.version = 5
   save()
 
   console.log(`\n
@@ -250,6 +280,27 @@ const setup = () =>{
   data.pointsPerGiftedTier1Subscription = parseInt(question("\nhow many points should one tier 1 gift sub be worth? (numbers only): ").trim())
   data.pointsPerGiftedTier2Subscription = parseInt(question("how many points should one tier 2 gift sub be worth? (numbers only): ").trim())
   data.pointsPerGiftedTier3Subscription = parseInt(question("how many points should one tier 3 gift sub be worth? (numbers only): ").trim())
+  
+  console.log(`\n
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    "Upgraded subscription settings"
+    -------------------------------------------------------------------------------------
+    Do you want to reward people who uppgrade their prime or gifted subscription to a regular
+    subscription? Be aware that this can create a "double" dib that month as when their 
+    subscription renews the same month they uppgraded, they will get points for that too.
+    -------------------------------------------------------------------------------------
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
+    `)
+    
+  let updateUpgradedQuestion = question("Do you want to enabled points for 'upgraded' prime/gifted subscriptions (y/n): ").trim().toLowerCase()
+
+  if(updateUpgradedQuestion === "y"){
+    data.upgradedSubsAllowed = true
+    data.pointsPerUpgradedSub = parseInt(question("How many points should be added when someone 'uppgrades' their subscription? (number only): ").trim()) 
+  }else{
+    data.upgradedSubsAllowed = false
+    data.pointsPerUpgradedSub = 1
+  }
 
   console.log(`\n
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -412,6 +463,27 @@ const execute = () => {
         }
       }else{
         debugtxt(tags, message)
+      }
+    })
+    chat.on("anongiftpaidupgrade", (channel, username, userstate) =>{
+      if(data.upgradedSubsAllowed){
+        console.log(`${CurrentTime()}: Gifted upgrade, name: ${username}`)
+        pointsHandler("add", data.pointsPerUpgradedSub)
+      }
+    })
+
+    chat.on("giftpaidupgrade", (channel, username, sender, userstate) =>{
+      if(data.upgradedSubsAllowed){
+        console.log(`${CurrentTime()}: Gifted upgrade, name: ${username}`)
+        pointsHandler("add", data.pointsPerUpgradedSub)
+      }
+    })
+
+    let raw_messages = []
+    chat.on("raw_message", (messageCloned, message) => {
+      if(data.upgradedSubsAllowed && message.command === "USERNOTICE" && message.tags["msg-id"] === "primepaidupgrade"){
+        console.log(`${CurrentTime()}: Prime upgrade, name: ${message.tags["login"]}`)
+        pointsHandler("add", data.pointsPerUpgradedSub)
       }
     })
 
@@ -765,7 +837,7 @@ load()
 if(!data.installed){
   setup()
 }else{
-  if(!data.version || data.version < 3){
+  if(!data.version || data.version < 5){
     update()
   }
   answer = question("Do you want to reset the multigoal (points and goal count)? (y/n): ")
