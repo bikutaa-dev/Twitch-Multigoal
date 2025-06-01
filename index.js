@@ -9,7 +9,8 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-
+let eventsub = require("./tools/TwitchPubSub")
+let Auth = require("./tools/Auth")
 let fs = require("fs")
 let sound = require("sound-play")
 let question = require("readline-sync").question
@@ -44,8 +45,14 @@ const defaultSettings = {
   "difficultyPointIncrease": 1,
   "upgradedSubsAllowed": false,
   "pointsPerUpgradedSub": 1, 
-  "version": 5
+  "version": 6,
+  "eventsub": {
+    "eventsub_token": "TOKEN",
+    "eventsub_refresh_token": "TOKEN",
+    "eventsub_expires_in": "TOKEN"
+  }
 };
+
 
 
 let answer
@@ -188,9 +195,9 @@ const update = () =>{
     -------------------------------------------------------------------------------------
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
     `)
+    data.version = 4
   }
-  
-  data.version = 4
+
 
   if(!data.version || data.version === 4){
     data.upgradedSubsAllowed = false
@@ -216,9 +223,20 @@ const update = () =>{
       data.upgradedSubsAllowed = false
       data.pointsPerUpgradedSub = 1
     }
+    data.version = 5
   }
 
-  data.version = 5
+  
+
+  if(data.version === 5){
+    data.eventsub = {
+      "eventsub_token": "TOKEN",
+      "eventsub_refresh_token": "TOKEN",
+      "eventsub_expires_in": "TOKEN"
+    }
+  }
+
+  data.version = 6
   save()
 
   console.log(`\n
@@ -324,14 +342,12 @@ const setup = () =>{
     data.pointsToAddPerCheer = parseInt(question("How many points should be added when reached? (numbers only): ").trim())
   }
   
+  
   console.log(`\n
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     Chat settings
     -------------------------------------------------------------------------------------
-    Do you want a chat message to appear when a goal has been reached? For that you need
-    a seprate account from your channel account, with that account go grab a oauth token
-    from https://twitchapps.com/tmi/, it will look something like this: 
-    oauth:1h4x0s1svsga4aif40x47bnoaa26i4 , Enter the full thing when asked. When setting up
+    Do you want a chat message to appear when a goal has been reached? When setting up
     the chat message format the following parameters can be used: \n
       \${points} = current points. \n
       \${goal} = the goal set. \n
@@ -342,8 +358,6 @@ const setup = () =>{
 
   answer = question("do you want a chat message to appear when a goal is reached? (y/n): ").trim()
   if(answer.toLowerCase() === "y"){
-    data.username = question("Account name of the account that will announce in chat (most be seprate from channel name): ").trim().toLowerCase()
-    data.token = question("What is the full oath token for that account?: ").trim()
     data.chatMessage = question("What should the chat message say?: ").trim()
   } else {
     data.username = ""
@@ -421,25 +435,30 @@ function debugtxt(...text){
 
 let chat
 const execute = () => {
-  let tokenstring
-  if(data.token && data.token !== "TOKEN"){
-    tokenstring = "with token"
-    chat = new tmi.Client(
-      {
-        identity: {
-          username: data.username,
-          password: data.token
-        },
-        channels: [data.channel]
-      }
-    )
-  }else{
-    tokenstring = "without token"
-    chat = new tmi.Client(
-      {
-        channels: [data.channel]
-      }
-    )
+  let tokenstring 
+  try{
+    
+    if(data.eventsub.eventsub_token && data.eventsub.eventsub_token !== "TOKEN"){
+      tokenstring = "with token"
+      chat = new tmi.Client(
+        {
+          identity: {
+            username: data.channel,
+            password: `oauth:${data.eventsub.eventsub_token}`
+          },
+          channels: [data.channel]
+        }
+      )
+    }else{
+      tokenstring = "without token"
+      chat = new tmi.Client(
+        {
+          channels: [data.channel]
+        }
+      )
+    }
+  }catch(err){
+    console.log("Error connecting to chat: ", err)
   }
 
   chat.connect().then(() => {
@@ -485,14 +504,6 @@ const execute = () => {
         console.log(`${CurrentTime()}: Prime upgrade, name: ${message.tags["login"]}`)
         pointsHandler("add", data.pointsPerUpgradedSub)
       }
-    })
-
-    chat.on("cheer", (channel, userstate, message) =>{
-      if(data.cheerMode !== "off"){
-        console.log(`${CurrentTime()}: From: ${userstate["display-name"]}, cheered: ${userstate["bits"]}`)
-        bitsPointCalculation(parseInt(userstate["bits"]))
-      }
-      
     })
 
 
@@ -695,6 +706,24 @@ const addPoints = (change) => {
   }
 }
 
+function twitchEventsubCallback(message){
+  console.log(`${CurrentTime()}: From: ${message.user_name}, cheered: ${message.bits}`)
+  bitsPointCalculation(message.bits)
+}
+
+async function HandleTwitchAuth(){
+  if(data.token !== "TOKEN" || data.cheerMode !== "off" || data.chatMessage !== ""){
+      try {
+        const tokens = await TwitchAuth.authenticate();
+        if(data.cheerMode !== "off"){
+          TwitchEventsub.connectWS()
+        }
+      } catch (error) {
+        console.error("Authentication failed:", error);
+      }
+  }
+}
+
 function controlCommand(words){
   if (words.length === 1) {
     console.log(`${CurrentTime()}: ${data.controlCommandName} needs a parameter/option`)
@@ -833,17 +862,28 @@ const commands = () => {
 }
 
 load()
-
-if(!data.installed){
-  setup()
-}else{
-  if(!data.version || data.version < 5){
-    update()
+const TwitchAuth = new Auth(data, data.eventsub)
+const TwitchEventsub = new eventsub(data, TwitchAuth, twitchEventsubCallback.bind(this))
+async function main() {
+  
+  if(!data.installed){
+    setup()
+  }else{
+    if(!data.version || data.version < 6){
+      update()
+    }
   }
-  answer = question("Do you want to reset the multigoal (points and goal count)? (y/n): ")
+
+  answer = question("Do you want to reset the multigoal (points and goal count)? (y/n): ").trim().toLowerCase()
   if(answer === "y"){
     resetGoal()
   }
+
+  await HandleTwitchAuth()
+
+  execute()
 }
 
-execute()
+main();
+
+
