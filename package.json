@@ -1,6 +1,6 @@
 {
   "name": "twitch-multigoal",
-  "version": "2.0",
+  "version": "2.1",
   "scripts": {
     "start": "npx node-repl ./index.js",
     "dev": "npx node-repl ./index.js"
@@ -17,6 +17,6 @@
     "node": ">=18"
   },
   "volta": {
-    "node": "18.20.8"
+   "node": "18.20.8"
   }
 }

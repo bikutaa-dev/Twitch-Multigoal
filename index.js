@@ -29,6 +29,8 @@ const defaultSettings = {
   "goal": 10,
   "defaultGoalCount": 1,
   "goalCount": 1,
+  "currentBitsAmount": 0,
+  "currentSubsPointsAmount": 0,
   "pointsPerPrimeSubscription": 1,
   "pointsPerTier1Subscription": 1,
   "pointsPerTier2Subscription": 2,
@@ -40,12 +42,14 @@ const defaultSettings = {
   "cheerMode": "off",
   "pointsToAddPerCheer": 1,
   "bitsToIncreasePoints": 500,
+  "shouldWritetoBitsFile": false,
+  "bitsTextFormat": "${bits}/${bitsToPoints} bits to reach goal number #${goalCount}",
   "controlCommandName": "!goaledit",
   "difficultyMode": false,
   "difficultyPointIncrease": 1,
   "upgradedSubsAllowed": false,
   "pointsPerUpgradedSub": 1, 
-  "version": 6,
+  "version": 7,
   "eventsub": {
     "eventsub_token": "TOKEN",
     "eventsub_refresh_token": "TOKEN",
@@ -236,7 +240,38 @@ const update = () =>{
     }
   }
 
-  data.version = 6
+  if(!data.version || data.version === 6 && data.cheerMode === "accumulated"){
+    console.log(`
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    "Bits text file"
+    -------------------------------------------------------------------------------------
+    You can write extra bit data in a seperate file for example how many more bits are
+    needed to get a point, this gets written to BitOutput.txt. This is mostly useful if 
+    you have the cheer mode set to "accumulated". You have the following parameters for 
+    the text formatting: \n
+    \${bitsToPoint} : the total amount of bits towards reaching the next point.\n
+    \${bitsForPoint} : the total amount of bits needed to reach the next point.\n
+    \${bitsToGoal} : the total amount of bits towards reaching the goal. \n
+    \${bitsForGoal} : the total amount of bits needed to reach the goal. \n
+    \${points} : current points.\n
+    \${goal} : the goal set.\n
+    \${goalCount} : the number of times the goal has been reached.\n
+    -------------------------------------------------------------------------------------
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
+    `)
+    data.shouldWritetoBitsFile = question("Do you want to write extra bit data(gets written to BitOutput.txt)? (y/n): ").trim().toLowerCase()
+    if(data.shouldWritetoBitsFile === "y"){
+      data.bitsTextFormat = question("How should the text be formated?: ").trim()
+    }else{
+      data.bitsTextFormat = ""
+    }
+    data.version = 7  
+  }else if(!data.version || data.version === 6){
+    data.bitsTextFormat = ""
+    data.version = 7
+  }
+  
+  data.version = 7
   save()
 
   console.log(`\n
@@ -341,7 +376,32 @@ const setup = () =>{
     data.bitsToIncreasePoints = parseInt(question("How much needs to be cheered to increase the points?(number only): ").trim())
     data.pointsToAddPerCheer = parseInt(question("How many points should be added when reached? (numbers only): ").trim())
   }
-  
+
+
+  console.log(`\n
+  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  Bits text file
+  -------------------------------------------------------------------------------------
+  You can write extra bit data in a seperate file for example how many more bits are 
+  needed to get a point, this gets written to BitOutput.txt. This is mostly useful if 
+  you have the cheer mode set to "accumulated". You have the following parameters for 
+  the text formatting: \n
+  \${bitsToPoint} : the total amount of bits towards reaching the next point.\n
+  \${bitsForPoint} : the total amount of bits needed to reach the next point.\n
+  \${bitsToGoal} : the total amount of bits towards reaching the goal. \n
+  \${bitsForGoal} : the total amount of bits needed to reach the goal. \n
+  \${points} : current points.\n
+  \${goal} : the goal set.\n
+  \${goalCount} : the number of times the goal has been reached.\n
+  -------------------------------------------------------------------------------------
+  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
+  `)
+  data.shouldWritetoBitsFile = question("Do you want to write extra bit data(gets written to BitOutput.txt)? (y/n): ").trim().toLowerCase()
+  if(data.shouldWritetoBitsFile === "y"){
+    data.bitsTextFormat = question("How should the text be formated?: ").trim()
+  }else{
+    data.bitsTextFormat = ""
+  }
   
   console.log(`\n
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -472,6 +532,7 @@ const execute = () => {
     chat.removeAllListeners()
 
     fileWriteHandler()
+    updateBitstxtFile()
 
     chat.on("message", (channel, tags, message, self)=>{
       if(tags !== null && tags !== undefined){
@@ -487,14 +548,14 @@ const execute = () => {
     chat.on("anongiftpaidupgrade", (channel, username, userstate) =>{
       if(data.upgradedSubsAllowed){
         console.log(`${CurrentTime()}: Gifted upgrade, name: ${username}`)
-        pointsHandler("add", data.pointsPerUpgradedSub)
+        PointsChangeQueue("subs", "add", data.pointsPerUpgradedSub)
       }
     })
 
     chat.on("giftpaidupgrade", (channel, username, sender, userstate) =>{
       if(data.upgradedSubsAllowed){
         console.log(`${CurrentTime()}: Gifted upgrade, name: ${username}`)
-        pointsHandler("add", data.pointsPerUpgradedSub)
+        PointsChangeQueue("subs", "add", data.pointsPerUpgradedSub)
       }
     })
 
@@ -502,7 +563,7 @@ const execute = () => {
     chat.on("raw_message", (messageCloned, message) => {
       if(data.upgradedSubsAllowed && message.command === "USERNOTICE" && message.tags["msg-id"] === "primepaidupgrade"){
         console.log(`${CurrentTime()}: Prime upgrade, name: ${message.tags["login"]}`)
-        pointsHandler("add", data.pointsPerUpgradedSub)
+        PointsChangeQueue("subs", "add", data.pointsPerUpgradedSub)
       }
     })
 
@@ -510,19 +571,19 @@ const execute = () => {
     chat.on("subscription", (channel, username, method, message, userstate) => {
       switch(userstate["msg-param-sub-plan"]){
         case "Prime":{
-        pointsHandler("add", data.pointsPerPrimeSubscription)
+        PointsChangeQueue("subs", "add", data.pointsPerPrimeSubscription)
         break
         }
         case("1000"):{
-          pointsHandler("add", data.pointsPerTier1Subscription)
+          PointsChangeQueue("subs", "add", data.pointsPerTier1Subscription)
           break
         }
         case("2000"):{
-          pointsHandler("add", data.pointsPerTier2Subscription)
+          PointsChangeQueue("subs", "add", data.pointsPerTier2Subscription)
           break
         }
         case("3000"):{
-          pointsHandler("add", data.pointsPerTier3Subscription)
+          PointsChangeQueue("subs", "add", data.pointsPerTier3Subscription)
           break
         }
         default:{
@@ -535,19 +596,19 @@ const execute = () => {
     chat.on("resub", (channel, username, months, message, userstate, methods) => {
       switch(userstate["msg-param-sub-plan"]){
         case "Prime":{
-        pointsHandler("add", data.pointsPerPrimeSubscription)
+        PointsChangeQueue("subs", "add", data.pointsPerPrimeSubscription)
         break
         }
         case("1000"):{
-          pointsHandler("add", data.pointsPerTier1Subscription)
+          PointsChangeQueue("subs", "add", data.pointsPerTier1Subscription)
           break
         }
         case("2000"):{
-          pointsHandler("add", data.pointsPerTier2Subscription)
+          PointsChangeQueue("subs", "add", data.pointsPerTier2Subscription)
           break
         }
         case("3000"):{
-          pointsHandler("add", data.pointsPerTier3Subscription)
+          PointsChangeQueue("subs", "add", data.pointsPerTier3Subscription)
           break
         }
         default:{
@@ -568,15 +629,15 @@ const execute = () => {
       
       switch(userstate["msg-param-sub-plan"]){
         case("1000"):{
-          pointsHandler("add", data.pointsPerGiftedTier1Subscription*giftMonths)
+          PointsChangeQueue("subs", "add", data.pointsPerGiftedTier1Subscription*giftMonths)
           break
         }
         case("2000"):{
-          pointsHandler("add", data.pointsPerGiftedTier2Subscription*giftMonths)
+            PointsChangeQueue("subs", "add", data.pointsPerGiftedTier2Subscription*giftMonths)
           break
         }
         case("3000"):{
-          pointsHandler("add", data.pointsPerGiftedTier3Subscription*giftMonths)
+          PointsChangeQueue("subs", "add", data.pointsPerGiftedTier3Subscription*giftMonths)
           break
         }
         default:{
@@ -594,7 +655,6 @@ const execute = () => {
 }
 
 
-let totalCheered = 0
 function bitsPointCalculation(bits){
   let timesReached = 0
   switch(data.cheerMode){
@@ -603,58 +663,102 @@ function bitsPointCalculation(bits){
       return
     }
     case "accumulated":{
-      totalCheered += bits
-      timesReached = Math.floor(totalCheered/data.bitsToIncreasePoints)
+      data.currentBitsAmount += bits
+      timesReached = Math.floor(data.currentBitsAmount/data.bitsToIncreasePoints)
       if(timesReached >= 1){
-        pointsHandler("add", timesReached*data.pointsToAddPerCheer)
-        totalCheered = totalCheered%data.bitsToIncreasePoints
+        data.currentBitsAmount = data.currentBitsAmount%data.bitsToIncreasePoints
       }
       break;
     }
     case "single":{
       timesReached = Math.floor(bits/data.bitsToIncreasePoints)
-      if(timesReached >= 1){
-        pointsHandler("add", timesReached*data.pointsToAddPerCheer)
-      }
       break;
     }
   }
+      
+  return timesReached
 }
-let superChange = 0
-let pointsHandelerTimeoutID
-function pointsHandler(typeOfChange, change){
-  superChange += change
-  clearTimeout(pointsHandelerTimeoutID)
-  pointsHandelerTimeoutID = setTimeout(()=>{
-    switch(typeOfChange){
-      case "add":{
-        addPoints(superChange)
-        break;
+
+let PointsChangeTimeoutID
+let pointChange = 0
+let bitsChanged = false
+function PointsChangeQueue(type, typeOfChange, change){
+  switch(type){
+    case "bits":{
+      switch(typeOfChange){
+        case "add":{
+          pointChange = pointChange + bitsPointCalculation(change)
+          bitsChanged = true
+          break
+        }
+        case "remove":{
+          pointChange = pointChange - bitsPointCalculation(change)
+          bitsChanged = true
+          break
+        }
       }
-      case "remove":{
-        removePoints(superChange)
-        break
+      break
+    }
+    case "subs":{
+      switch(typeOfChange){
+        case "add":{
+          pointChange = pointChange + change
+          break
+        }
+        case "remove":{
+          pointChange = pointChange - change
+          break
+        }
       }
     }
-    superChange = 0
-  }, 333)
-  
+    case "points":{
+      switch(typeOfChange){
+        case "add":{
+          pointChange = pointChange + change
+          break
+        }
+        case "remove":{
+          pointChange = pointChange - change
+          break
+        }
+      }
+    }
+  }
 
+  clearTimeout(PointsChangeTimeoutID)
+  PointsChangeTimeoutID = setTimeout(()=>{
+    if(pointChange === 0){
+      if(bitsChanged){
+        updateBitstxtFile()
+        bitsChanged = false
+      }
+    }
+    else if(pointChange > 0){
+      addPoints(pointChange)
+    }else{
+      removePoints(Math.abs(pointChange))
+    }
+    pointChange = 0
+    bitsChanged = false
+  }, 333)
 }
 
-const removePoints = (change) => {
+const removePoints = (change, writeToFile = true) => {
   data.points -= change
   if (data.points < 0) {
     data.goalCount -= 1
     let left = Math.abs(data.points)        
     data.points = data.goal
     if(left > 0){
-      pointsHandler("remove", left)
+      removePoints(left, false)
     }else{
       data.point = left
     }
   }
-  fileWriteHandler()
+  if(writeToFile){
+    fileWriteHandler()
+    updateBitstxtFile()
+  }
 }
 
 function calculateTimesReachedWithDifficulty(change){
@@ -677,6 +781,15 @@ function calculateTimesReachedWithDifficulty(change){
   return timesReached
 }
 
+function updateBitstxtFile(){
+  if(!data.shouldWritetoBitsFile) return
+
+  let bitsforGoal = data.goal * data.bitsToIncreasePoints
+  let bitsToGoal = (data.points * data.bitsToIncreasePoints) + data.currentBitsAmount;
+  let outstring = data.bitsTextFormat.replaceAll("${bitsToPoint}", data.currentBitsAmount).replaceAll("${bitsForPoint}", data.bitsToIncreasePoints).replaceAll("${bitsToGoal}", bitsToGoal).replaceAll("${bitsForGoal}", bitsforGoal).replaceAll("${points}", data.points).replaceAll("${goal}", data.goal).replaceAll("${goalCount}", data.goalCount)
+  
+  writeTextTofile("BitOutput.txt", outstring)
+}
 
 const addPoints = (change) => {
   data.points += change
@@ -693,22 +806,26 @@ const addPoints = (change) => {
       chat.say(data.channel, data.chatMessage.replaceAll("${points}", data.points).replaceAll("${goal}", data.goal).replaceAll("${goalCount}", data.goalCount)).catch((err) => {console.log(err)})
     }
     if(data.soundPath !== "" && data.soundPath !== null && data.soundPath !== undefined){
-      sound.play(data.soundPath, data.soundVolume).catch((err)=>{
-        console.log("sound error:")
-        console.log(err)
-      })
+      PlaySoundFile()
     }
     fileWriteHandler()
-
+    updateBitstxtFile()
   }else{
     fileWriteHandler()
-    
+    updateBitstxtFile()
   }
+}
+
+function PlaySoundFile() {
+  sound.play(data.soundPath, data.soundVolume).catch((err) => {
+    console.log("sound error:")
+    console.log(err)
+  })
 }
 
 function twitchEventsubCallback(message){
   console.log(`${CurrentTime()}: From: ${message.user_name}, cheered: ${message.bits}`)
-  bitsPointCalculation(message.bits)
+  PointsChangeQueue("bits", "add", message.bits)
 }
 
 async function HandleTwitchAuth(){
@@ -736,25 +853,25 @@ function controlCommand(words){
     }
     case("p+"):{
       if(words.length === 2){
-        pointsHandler("add", 1)
+        PointsChangeQueue("points", "add", 1)
       }
       else if(words.length === 3 && !isNaN(words[2])){
-        pointsHandler("add", Math.floor(words[2]))
+        PointsChangeQueue("points", "add", Math.floor(words[2]))
       }
       else{
-        pointsHandler("add", 1)
+        PointsChangeQueue("points", "add", 1)
       }
       break
     }
     case("p-"):{
       if(words.length === 2){
-        pointsHandler("remove", 1)
+        PointsChangeQueue("points", "remove", 1)
       }
       else if(words.length === 3 && !isNaN(words[2])){
-        pointsHandler("remove", Math.floor(words[2]))
+        PointsChangeQueue("points", "remove", Math.floor(words[2]))
       }
       else{
-        pointsHandler("remove", 1)
+        PointsChangeQueue("points", "remove", 1)
       }
       break
     }
@@ -797,20 +914,36 @@ const resetGoal = () => {
   data.points = 0
   data.goalCount = data.defaultGoalCount
   data.goal = data.defaultGoal
-  totalCheered = 0
+  data.currentBitsAmount = 0
   fileWriteHandler()
+  updateBitstxtFile()
 } 
 
 
 const addGoals = (change) => {
   data.goalCount += change
   fileWriteHandler()
+  updateBitstxtFile()
 }
 
 
 const removeGoals = (change) => {
   data.goalCount -= change
   fileWriteHandler()
+  updateBitstxtFile()
+}
+
+const writeTextTofile = async (filename, text) => {
+
+  await fs.writeFile(filename, text, function (err) {
+    if (err){
+      console.log(`${CurrentTime()}: file write error: `)
+      console.log(err)
+    }else{
+      console.log(`${CurrentTime()}: ${filename} updated to: "${text.trim()}"`)
+    }
+  })
+  save()
 }
 
 const fileWriteHandler = async () => {
@@ -821,7 +954,7 @@ const fileWriteHandler = async () => {
         console.log(`${CurrentTime()}: file write error: `)
         console.log(err)
       }else{
-        console.log(`${CurrentTime()}:"${outstring}" written to output.txt`)
+        console.log(`${CurrentTime()}: output.txt updated to: "${outstring.trim()}"`)
       }
     })
     save()
@@ -843,6 +976,10 @@ const fullReset = () => {
     data = defaultSettings
     saveAndExit()
   }
+}
+
+const playSound = () => {
+  PlaySoundFile()
 }
 
 const commands = () => {
@@ -869,7 +1006,7 @@ async function main() {
   if(!data.installed){
     setup()
   }else{
-    if(!data.version || data.version < 6){
+    if(!data.version || data.version < 7){
       update()
     }
   }
