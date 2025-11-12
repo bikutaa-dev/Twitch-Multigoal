@@ -633,7 +633,7 @@ const execute = () => {
           break
         }
         case("2000"):{
-            PointsChangeQueue("subs", "add", data.pointsPerGiftedTier2Subscription*giftMonths)
+          PointsChangeQueue("subs", "add", data.pointsPerGiftedTier2Subscription*giftMonths)
           break
         }
         case("3000"):{
@@ -710,6 +710,7 @@ function PointsChangeQueue(type, typeOfChange, change){
           break
         }
       }
+      break
     }
     case "points":{
       switch(typeOfChange){
@@ -722,9 +723,9 @@ function PointsChangeQueue(type, typeOfChange, change){
           break
         }
       }
+      break
     }
   }
-
   clearTimeout(PointsChangeTimeoutID)
   PointsChangeTimeoutID = setTimeout(()=>{
     if(pointChange === 0){
