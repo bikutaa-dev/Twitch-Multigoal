@@ -445,7 +445,6 @@ const setup = async() =>{
     message: "Enable difficulty mode (increases the goal each time it is reached)?",
     default: false,
   })
-  console.log("difficultyModeAnswer:::::", difficultyModeAnswer)
   if(difficultyModeAnswer){
     data.difficultyMode = true
     data.difficultyPointIncrease = await askInt("How much should the goal increase by each time it's reached? (number only)")
@@ -468,7 +467,7 @@ const setup = async() =>{
   data.pointsPerTier1Subscription = await askInt("How many points should a tier 1 (re)sub be worth? (numbers only)")
   data.pointsPerTier2Subscription = await askInt("How many points should a tier 2 (re)sub be worth? (numbers only)")
   data.pointsPerTier3Subscription = await askInt("How many points should a tier 3 (re)sub be worth? (numbers only)")
-
+  console.log("\n")
   data.pointsPerGiftedTier1Subscription = await askInt("How many points should one tier 1 gift sub be worth? (numbers only)")
   data.pointsPerGiftedTier2Subscription = await askInt("How many points should one tier 2 gift sub be worth? (numbers only)")
   data.pointsPerGiftedTier3Subscription = await askInt("How many points should one tier 3 gift sub be worth? (numbers only)")
@@ -488,7 +487,6 @@ const setup = async() =>{
     message: "Enable points for 'upgraded' prime/gifted subscriptions?",
     default: false,
   })
-  console.log("updateUpgradedQuestion:::::", updateUpgradedQuestion)
   if(updateUpgradedQuestion){
     data.upgradedSubsAllowed = true
     data.pointsPerUpgradedSub = await askInt("How many points should be added when someone 'upgrades' their subscription? (number only)") 
