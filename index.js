@@ -11,9 +11,37 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 */
 let eventsub = require("./tools/TwitchPubSub")
 let Auth = require("./tools/Auth")
+let TAPI = require("./tools/TwitchAPI")
 let fs = require("fs")
 let sound = require("sound-play")
-let question = require("readline-sync").question
+const { confirm, input, select } = require("@inquirer/prompts")
+const readline = require("readline")
+
+let commandRl = null
+let commandLoopOpen = false
+
+async function askInt(message) {
+  const value = await input({
+    message,
+    validate: (v) => !isNaN(parseInt(v, 10)) || "Please enter a number",
+  })
+  return parseInt(value, 10)
+}
+
+async function askFloat(message) {
+  const value = await input({
+    message,
+    validate: (v) => !isNaN(parseFloat(v)) || "Please enter a number",
+  })
+  return parseFloat(value)
+}
+
+async function askSelect(message, choices) {
+  const hint = "(select)"
+  const fullMessage = message.includes(hint) ? message : `${message} ${hint}`
+  return select({ message: fullMessage, choices })
+}
+
 const tmi = require('tmi.js');
 const defaultSettings = {
   "installed": false,
@@ -39,6 +67,8 @@ const defaultSettings = {
   "pointsPerGiftedTier2Subscription": 2,
   "pointsPerGiftedTier3Subscription": 3,
   "shouldGiftedFromChannelCount": false,
+  "shouldchannelPointsRedeemsTrigger": false,
+  "channelPointsRedeemsTriggerList": {},
   "cheerMode": "off",
   "pointsToAddPerCheer": 1,
   "bitsToIncreasePoints": 500,
@@ -49,7 +79,7 @@ const defaultSettings = {
   "difficultyPointIncrease": 1,
   "upgradedSubsAllowed": false,
   "pointsPerUpgradedSub": 1, 
-  "version": 7,
+  "version": 8,
   "eventsub": {
     "eventsub_token": "TOKEN",
     "eventsub_refresh_token": "TOKEN",
@@ -59,7 +89,6 @@ const defaultSettings = {
 
 
 
-let answer
 const load = () =>{
   if(fs.existsSync("settings.json")){
     let rawData = fs.readFileSync("settings.json")
@@ -83,7 +112,7 @@ function saveAndExit(){
     exit()
   })
 }
-const update = () =>{
+const update = async () =>{
   console.log(`\n
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     New version found
@@ -113,20 +142,24 @@ const update = () =>{
     -------------------------------------------------------------------------------------
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
     `)
-    data.hypeChatsActive = question("What mode do you want for Hype chats? (off/manual/automatic): ").trim().toLowerCase()
+    data.hypeChatsActive = await askSelect("What mode do you want for Hype chats?", [
+      { name: "off", value: "off" },
+      { name: "manual", value: "manual" },
+      { name: "automatic", value: "automatic" },
+    ])
     if(data.hypeChatsActive === "manual"){
-      data.pointsForLevelONE = parseFloat(question("how many points should a level 1 hype chat be worth?(number only, decimal allowed): ").trim())
-      data.pointsForLevelTWO = parseFloat(question("how many points should a level 2 hype chat be worth?(number only, decimal allowed): ").trim())
-      data.pointsForLevelTHREE = parseFloat(question("how many points should a level 3 hype chat be worth?(number only, decimal allowed): ").trim())
-      data.pointsForLevelFOUR = parseFloat(question("how many points should a level 4 hype chat be worth?(number only, decimal allowed): ").trim())
-      data.pointsForLevelFIVE = parseFloat(question("how many points should a level 5 hype chat be worth?(number only, decimal allowed): ").trim())
-      data.pointsForLevelSIX = parseFloat(question("how many points should a level 6 hype chat be worth?(number only, decimal allowed): ").trim())
-      data.pointsForLevelSEVEN = parseFloat(question("how many points should a level 7 hype chat be worth?(number only, decimal allowed): ").trim())
-      data.pointsForLevelEIGHT = parseFloat(question("how many points should a level 8 hype chat be worth?(number only, decimal allowed): ").trim())
-      data.pointsForLevelNINE = parseFloat(question("how many points should a level 9 hype chat be worth?(number only, decimal allowed): ").trim())
-      data.pointsForLevelTEN = parseFloat(question("how many points should a level 10 hype chat be worth?(number only, decimal allowed): ").trim())
+      data.pointsForLevelONE = await askFloat("How many points should a level 1 hype chat be worth? (number only, decimal allowed)")
+      data.pointsForLevelTWO = await askFloat("How many points should a level 2 hype chat be worth? (number only, decimal allowed)")
+      data.pointsForLevelTHREE = await askFloat("How many points should a level 3 hype chat be worth? (number only, decimal allowed)")
+      data.pointsForLevelFOUR = await askFloat("How many points should a level 4 hype chat be worth? (number only, decimal allowed)")
+      data.pointsForLevelFIVE = await askFloat("How many points should a level 5 hype chat be worth? (number only, decimal allowed)")
+      data.pointsForLevelSIX = await askFloat("How many points should a level 6 hype chat be worth? (number only, decimal allowed)")
+      data.pointsForLevelSEVEN = await askFloat("How many points should a level 7 hype chat be worth? (number only, decimal allowed)")
+      data.pointsForLevelEIGHT = await askFloat("How many points should a level 8 hype chat be worth? (number only, decimal allowed)")
+      data.pointsForLevelNINE = await askFloat("How many points should a level 9 hype chat be worth? (number only, decimal allowed)")
+      data.pointsForLevelTEN = await askFloat("How many points should a level 10 hype chat be worth? (number only, decimal allowed)")
     }else if(data.hypeChatsActive === "automatic"){
-      data.automaticBaseLevel = parseInt(question("What hype chat level should be the base for getting points? (numbers only): ").trim())
+      data.automaticBaseLevel = await askInt("What hype chat level should be the base for getting points? (numbers only)")
       convertLevelToString()
     }else{
       data.hypeChatsActive = "off"
@@ -218,11 +251,14 @@ const update = () =>{
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
     `)
     
-    let updateUpgradedQuestion = question("You want to enabled points for 'upgraded' prime/gifted subscriptions (y/n): ").trim().toLowerCase()
+    const updateUpgradedQuestion = await confirm({
+      message: "Enable points for 'upgraded' prime/gifted subscriptions?",
+      default: false,
+    })
 
-    if(updateUpgradedQuestion === "y"){
+    if(updateUpgradedQuestion){
       data.upgradedSubsAllowed = true
-      data.pointsPerUpgradedSub = parseInt(question("How many points should be added when someone 'uppgrades' their subscription? (number only): ").trim()) 
+      data.pointsPerUpgradedSub = await askInt("How many points should be added when someone 'upgrades' their subscription? (number only)") 
     }else{
       data.upgradedSubsAllowed = false
       data.pointsPerUpgradedSub = 1
@@ -259,9 +295,12 @@ const update = () =>{
     -------------------------------------------------------------------------------------
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
     `)
-    data.shouldWritetoBitsFile = question("Do you want to write extra bit data(gets written to BitOutput.txt)? (y/n): ").trim().toLowerCase()
-    if(data.shouldWritetoBitsFile === "y"){
-      data.bitsTextFormat = question("How should the text be formated?: ").trim()
+    data.shouldWritetoBitsFile = await confirm({
+      message: "Do you want to write extra bit data (gets written to BitOutput.txt)?",
+      default: false,
+    })
+    if(data.shouldWritetoBitsFile){
+      data.bitsTextFormat = await input({ message: "How should the text be formatted?" })
     }else{
       data.bitsTextFormat = ""
     }
@@ -270,10 +309,27 @@ const update = () =>{
     data.bitsTextFormat = ""
     data.version = 7
   }
-  
-  data.version = 7
-  save()
 
+
+  if(!data.version || data.version === 7){
+    if(data.shouldWritetoBitsFile === "n"){
+      data.shouldWritetoBitsFile = false
+    }else if(data.shouldWritetoBitsFile === "y"){
+      data.shouldWritetoBitsFile = true
+    }
+    
+    data.eventsub = {
+      "eventsub_token": "TOKEN",
+      "eventsub_refresh_token": "TOKEN",
+      "eventsub_expires_in": "TOKEN"
+    }
+    await SetUpChannelPoints()
+    data.version = 8
+  }
+  
+  data.version = 8
+  save()
+  
   console.log(`\n
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     Version update done
@@ -281,10 +337,89 @@ const update = () =>{
     Your new settings is now saved and the script will continue like usual.
     -------------------------------------------------------------------------------------
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
-    `)  
+    `)
 }
 
-const setup = () =>{
+async function SetUpChannelPoints(){
+  console.log(`\n
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    "Channel Points Redeems"
+    -------------------------------------------------------------------------------------
+    You can set up channel points redeems to add or remove points from the multigoal. If
+    you want this select yes (y), then you get to select what channel point redeem should 
+    trigger the multigoal and how many points should be added or removed.
+    -------------------------------------------------------------------------------------
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
+    `)
+    const channelPointsRedeemsQuestion = await confirm({
+      message: "Do you want to set up channel points redeems?",
+      default: false,
+    })
+    if(channelPointsRedeemsQuestion){
+      data.shouldchannelPointsRedeemsTrigger = true
+      data.channelPointsRedeemsTriggerList = {}
+      await setupChannelPointsRedeemsTriggerList()
+    }else{
+      data.shouldchannelPointsRedeemsTrigger = false
+      data.channelPointsRedeemsTriggerList = {}
+    }
+}
+
+async function setupChannelPointsRedeemsTriggerList(){
+  let channelPointsRedeems = await TwitchAPI.getChannelPointsRedeems()
+  if(!channelPointsRedeems.wasSuccessful){
+    console.log("Error getting channel points redeems: ", channelPointsRedeems.statusText)
+    return
+  }
+
+  let newChannelPointTriggers = await gatherChannelPointTriggers(channelPointsRedeems.channelPointsRedeems)
+  data.channelPointsRedeemsTriggerList = {
+    ...data.channelPointsRedeemsTriggerList,
+    ...newChannelPointTriggers
+  }
+}
+
+async function gatherChannelPointTriggers(channelPointsRedeems){
+  let newChannelPointTriggers = {}
+  let channelPointEntries = Object.entries(channelPointsRedeems)
+
+  if(channelPointEntries.length === 0){
+    console.log("No channel point redeems found.")
+    return newChannelPointTriggers
+  }
+
+  let selectedRedeemId = await askSelect("Which channel point redeem do you want to set up?", channelPointEntries.map(([id, title]) => ({
+    name: title,
+    value: id,
+  })))
+
+  let addOrRemove = await askSelect("Should this channel point redeem add or remove points?", [
+    { name: "add", value: "add" },
+    { name: "remove", value: "remove" },
+  ])
+
+  newChannelPointTriggers[selectedRedeemId] = {
+    id: selectedRedeemId,
+    title: channelPointsRedeems[selectedRedeemId],
+    action: addOrRemove,
+    points: 0
+  }
+
+  let numberOfPoints = await askInt("How many points should be added or removed? (number only)")
+
+  newChannelPointTriggers[selectedRedeemId].points = numberOfPoints
+
+  let addAnotherChannelPointRedeem = await confirm({
+    message: "Do you want to add another channel point redeem?",
+    default: false,
+  })
+  if(addAnotherChannelPointRedeem){
+    return {...newChannelPointTriggers, ...await gatherChannelPointTriggers(channelPointsRedeems)}
+  }
+  return newChannelPointTriggers
+}
+
+const setup = async() =>{
   console.log(`
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     Welcome to the setup of Twitch Multi goal and general settings
@@ -300,16 +435,20 @@ const setup = () =>{
     -------------------------------------------------------------------------------------
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
   `)
-  data.channel = question("What is your channel name?: ").trim().toLowerCase()
-  data.defaultGoal = parseInt(question("How many points should be required to reach the goal?(number only): ").trim())
+  data.channel = (await input({ message: "What is your channel name?" })).trim().toLowerCase()
+  data.defaultGoal = await askInt("How many points should be required to reach the goal? (number only)")
   data.goal = data.defaultGoal
-  data.defaultGoalCount = parseInt(question("What count should the multigoal start at?: ").trim())
+  data.defaultGoalCount = await askInt("What count should the multigoal start at? (numbers only)")
   data.goalCount = data.defaultGoalCount
-  data.outputString = question("How should the text in output.txt be formated?: ").trim()
-  let difficultyModeAnswer = question("Do you want to enable difficulty mode(this will increase the goal each time its reached? (y/n): ").trim().toLowerCase()
-  if(difficultyModeAnswer === "y"){
+  data.outputString = await input({ message: "How should the text in output.txt be formatted?" })
+  const difficultyModeAnswer = await confirm({
+    message: "Enable difficulty mode (increases the goal each time it is reached)?",
+    default: false,
+  })
+  console.log("difficultyModeAnswer:::::", difficultyModeAnswer)
+  if(difficultyModeAnswer){
     data.difficultyMode = true
-    data.difficultyPointIncrease = parseInt(question("How much should the goal increase by each time it's reached?(number only): ").trim())
+    data.difficultyPointIncrease = await askInt("How much should the goal increase by each time it's reached? (number only)")
   }else{
     data.difficultyMode = false
   }
@@ -325,14 +464,14 @@ const setup = () =>{
     -------------------------------------------------------------------------------------
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
   `)
-  data.pointsPerPrimeSubscription = parseInt(question("how many points should a prime (re)sub be worth? (numbers only): ").trim())
-  data.pointsPerTier1Subscription = parseInt(question("how many points should a tier 1 (re)sub be worth? (numbers only): ").trim())
-  data.pointsPerTier2Subscription = parseInt(question("how many points should a tier 2 (re)sub be worth? (numbers only): ").trim())
-  data.pointsPerTier3Subscription = parseInt(question("how many points should a tier 3 (re)sub be worth? (numbers only): ").trim())
+  data.pointsPerPrimeSubscription = await askInt("How many points should a prime (re)sub be worth? (numbers only)")
+  data.pointsPerTier1Subscription = await askInt("How many points should a tier 1 (re)sub be worth? (numbers only)")
+  data.pointsPerTier2Subscription = await askInt("How many points should a tier 2 (re)sub be worth? (numbers only)")
+  data.pointsPerTier3Subscription = await askInt("How many points should a tier 3 (re)sub be worth? (numbers only)")
 
-  data.pointsPerGiftedTier1Subscription = parseInt(question("\nhow many points should one tier 1 gift sub be worth? (numbers only): ").trim())
-  data.pointsPerGiftedTier2Subscription = parseInt(question("how many points should one tier 2 gift sub be worth? (numbers only): ").trim())
-  data.pointsPerGiftedTier3Subscription = parseInt(question("how many points should one tier 3 gift sub be worth? (numbers only): ").trim())
+  data.pointsPerGiftedTier1Subscription = await askInt("How many points should one tier 1 gift sub be worth? (numbers only)")
+  data.pointsPerGiftedTier2Subscription = await askInt("How many points should one tier 2 gift sub be worth? (numbers only)")
+  data.pointsPerGiftedTier3Subscription = await askInt("How many points should one tier 3 gift sub be worth? (numbers only)")
   
   console.log(`\n
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -345,11 +484,14 @@ const setup = () =>{
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
     `)
     
-  let updateUpgradedQuestion = question("Do you want to enabled points for 'upgraded' prime/gifted subscriptions (y/n): ").trim().toLowerCase()
-
-  if(updateUpgradedQuestion === "y"){
+  const updateUpgradedQuestion = await confirm({
+    message: "Enable points for 'upgraded' prime/gifted subscriptions?",
+    default: false,
+  })
+  console.log("updateUpgradedQuestion:::::", updateUpgradedQuestion)
+  if(updateUpgradedQuestion){
     data.upgradedSubsAllowed = true
-    data.pointsPerUpgradedSub = parseInt(question("How many points should be added when someone 'uppgrades' their subscription? (number only): ").trim()) 
+    data.pointsPerUpgradedSub = await askInt("How many points should be added when someone 'upgrades' their subscription? (number only)") 
   }else{
     data.upgradedSubsAllowed = false
     data.pointsPerUpgradedSub = 1
@@ -371,10 +513,14 @@ const setup = () =>{
     -------------------------------------------------------------------------------------
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
   `)
-  data.cheerMode = question("What mode do you want for cheers (info above)? (off/accumulated/single): ").trim().toLowerCase()
+  data.cheerMode = await askSelect("What mode do you want for cheers?", [
+    { name: "off", value: "off" },
+    { name: "accumulated", value: "accumulated" },
+    { name: "single", value: "single" },
+  ])
   if(data.cheerMode !== "off"){
-    data.bitsToIncreasePoints = parseInt(question("How much needs to be cheered to increase the points?(number only): ").trim())
-    data.pointsToAddPerCheer = parseInt(question("How many points should be added when reached? (numbers only): ").trim())
+    data.bitsToIncreasePoints = await askInt("How much needs to be cheered to increase the points? (number only)")
+    data.pointsToAddPerCheer = await askInt("How many points should be added when reached? (numbers only)")
   }
 
 
@@ -396,12 +542,17 @@ const setup = () =>{
   -------------------------------------------------------------------------------------
   ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
   `)
-  data.shouldWritetoBitsFile = question("Do you want to write extra bit data(gets written to BitOutput.txt)? (y/n): ").trim().toLowerCase()
-  if(data.shouldWritetoBitsFile === "y"){
-    data.bitsTextFormat = question("How should the text be formated?: ").trim()
+  data.shouldWritetoBitsFile = await confirm({
+    message: "Do you want to write extra bit data (gets written to BitOutput.txt)?",
+    default: false,
+  })
+  if(data.shouldWritetoBitsFile){
+    data.bitsTextFormat = await input({ message: "How should the text be formatted?" })
   }else{
     data.bitsTextFormat = ""
   }
+  
+  await SetUpChannelPoints()
   
   console.log(`\n
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -416,9 +567,12 @@ const setup = () =>{
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
   `)
 
-  answer = question("do you want a chat message to appear when a goal is reached? (y/n): ").trim()
-  if(answer.toLowerCase() === "y"){
-    data.chatMessage = question("What should the chat message say?: ").trim()
+  const wantsChatMessage = await confirm({
+    message: "Show a chat message when a goal is reached?",
+    default: false,
+  })
+  if(wantsChatMessage){
+    data.chatMessage = await input({ message: "What should the chat message say?" })
   } else {
     data.username = ""
     data.token = "TOKEN"
@@ -436,11 +590,14 @@ const setup = () =>{
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
   `)
 
-  answer = question("do you want a sound to play when a goal is reached? (y/n): ").trim()
+  const wantsSound = await confirm({
+    message: "Play a sound when a goal is reached?",
+    default: false,
+  })
 
-  if(answer.toLowerCase() === "y"){
-    data.soundPath = question("What is the full path to the soundfile you want to play?: ").trim()
-    data.soundVolume = parseInt(question("Volume level (can be between 0 and 100): ").trim())/100
+  if(wantsSound){
+    data.soundPath = await input({ message: "What is the full path to the sound file you want to play?" })
+    data.soundVolume = await askInt("Volume level (can be between 0 and 100)") / 100
   }
   else{
     data.soundPath = ""
@@ -465,7 +622,7 @@ const setup = () =>{
     -------------------------------------------------------------------------------------
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
   `)
-  data.controlCommandName = question("What should the controlCommandName be to control the multigoal?: ").trim()
+  data.controlCommandName = await input({ message: "What should the control command name be to control the multigoal?" })
 
   data.installed = true
   save()
@@ -525,7 +682,7 @@ const execute = () => {
     console.log(`
       ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
       Connected to channel: ${data.channel} ${tokenstring}, ready to receive events! 
-      If you want information on commands you can use in CMD type commands() \n
+      If you want information on commands you can use, type commands() \n
       ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
     `)
 
@@ -824,16 +981,21 @@ function PlaySoundFile() {
   })
 }
 
-function twitchEventsubCallback(message){
-  console.log(`${CurrentTime()}: From: ${message.user_name}, cheered: ${message.bits}`)
-  PointsChangeQueue("bits", "add", message.bits)
+function twitchEventsubCallback(message, type){
+  if(type === "bits"){
+    console.log(`${CurrentTime()}: From: ${message.user_name}, cheered: ${message.bits}`)
+    PointsChangeQueue("bits", "add", message.bits)
+  }else if(type === "channelPointsRedeems" && data.shouldchannelPointsRedeemsTrigger && data.channelPointsRedeemsTriggerList[message.reward.id]){
+    console.log(`${CurrentTime()}: From: ${message.user_name}, redeemed: ${message.reward.title}`)
+    PointsChangeQueue("points", data.channelPointsRedeemsTriggerList[message.reward.id].action, data.channelPointsRedeemsTriggerList[message.reward.id].points)
+  }
 }
 
 async function HandleTwitchAuth(){
-  if(data.token !== "TOKEN" || data.cheerMode !== "off" || data.chatMessage !== ""){
+  if(data.token !== "TOKEN" || data.cheerMode !== "off" || data.chatMessage !== "" || data.shouldchannelPointsRedeemsTrigger){
       try {
         const tokens = await TwitchAuth.authenticate();
-        if(data.cheerMode !== "off"){
+        if(data.cheerMode !== "off" || data.shouldchannelPointsRedeemsTrigger){
           TwitchEventsub.connectWS()
         }
       } catch (error) {
@@ -972,8 +1134,12 @@ const test = (level) =>{
   hypeChatManager(level)
 } 
 
-const fullReset = () => {
-  if(answer === "y"){
+const fullReset = async () => {
+  const confirmed = await confirm({
+    message: "This will fully reset your settings and quit. The next start will run setup again. Continue?",
+    default: false,
+  })
+  if (confirmed) {
     data = defaultSettings
     saveAndExit()
   }
@@ -981,6 +1147,99 @@ const fullReset = () => {
 
 const playSound = () => {
   PlaySoundFile()
+}
+
+const channelPoints = async() => {
+  await SetUpChannelPoints()
+  console.log("Channel points set up")
+}
+
+function startCommandLoop() {
+  commandLoopOpen = true
+  commandRl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    prompt: "",
+  })
+
+  const runCommand = async (line) => {
+    const trimmed = line.trim()
+    if (!trimmed) return
+
+    const match = trimmed.match(/^(\w+)(?:\((.*)\))?$/)
+    if (!match) {
+      console.log("Unknown input. Type commands() for help.")
+      return
+    }
+
+    const [, name, argsStr] = match
+    const args = argsStr
+      ? argsStr.split(",").map((s) => {
+          const v = s.trim().replace(/^["']|["']$/g, "")
+          const n = Number(v)
+          return Number.isNaN(n) ? v : n
+        })
+      : []
+
+    commandRl.pause()
+    try {
+      switch (name) {
+        case "addPoints":
+          addPoints(args[0] ?? 0)
+          break
+        case "removePoints":
+          removePoints(args[0] ?? 0)
+          break
+        case "addGoals":
+          addGoals(args[0] ?? 1)
+          break
+        case "removeGoals":
+          removeGoals(args[0] ?? 1)
+          break
+        case "resetGoal":
+          resetGoal()
+          break
+        case "exit":
+          exit()
+          return
+        case "fullReset":
+          await fullReset()
+          break
+        case "commands":
+          commands()
+          break
+        case "playSound":
+          playSound()
+          break
+        case "test":
+          test(args[0])
+          break
+        default:
+          console.log(`Unknown command: ${name}. Type commands() for help.`)
+      }
+    } finally {
+      if (commandLoopOpen && commandRl) {
+        commandRl.resume()
+      }
+    }
+  }
+
+  commandRl.on("line", async (line) => {
+    await runCommand(line).catch((err) => {
+      console.error(err)
+    }).finally(() => {
+      if (commandLoopOpen && commandRl) {
+        commandRl.prompt()
+      }
+    })
+  })
+
+  commandRl.on("close", () => {
+    commandLoopOpen = false
+    process.exit(0)
+  })
+
+  commandRl.prompt()
 }
 
 const commands = () => {
@@ -991,6 +1250,7 @@ const commands = () => {
     addGoals(x) : add x number of goals reached.
     removeGoals(x) : remove x number of goals reached.
     resetGoal(): resets the multigoal.
+    channelPoints(): sets up channel points redeems.
     exit() : End the program.
     fullReset(): Will fully reset your settings and quit out
     of the script, the next time you start it it will prompt 
@@ -1001,25 +1261,28 @@ const commands = () => {
 
 load()
 const TwitchAuth = new Auth(data, data.eventsub)
+const TwitchAPI = new TAPI(data, TwitchAuth)
 const TwitchEventsub = new eventsub(data, TwitchAuth, twitchEventsubCallback.bind(this))
 async function main() {
   
   if(!data.installed){
-    setup()
+    await setup()
   }else{
-    if(!data.version || data.version < 7){
-      update()
+    if(!data.version || data.version < 8){
+      await update()
     }
   }
-
-  answer = question("Do you want to reset the multigoal (points and goal count)? (y/n): ").trim().toLowerCase()
-  if(answer === "y"){
+  
+  const shouldReset = await confirm({
+    message: "Do you want to reset the multigoal (points and goal count)?",
+    default: false,
+  })
+  if(shouldReset){
     resetGoal()
   }
-
   await HandleTwitchAuth()
-
   execute()
+  startCommandLoop()
 }
 
 main();

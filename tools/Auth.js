@@ -1,5 +1,4 @@
 const axios = require('axios');
-const readline = require('readline');
 const fs = require('fs');
 class TwitchAuth {
     constructor(data, token_data) {
@@ -21,7 +20,7 @@ class TwitchAuth {
 
     async getDeviceCode() {
         try {
-            const response = await axios.post(`${this.deviceCodeEndpoint}?client_id=${this.clientId}&scope=bits:read user:bot chat:edit chat:read`);
+            const response = await axios.post(`${this.deviceCodeEndpoint}?client_id=${this.clientId}&scope=bits:read user:bot chat:edit chat:read channel:read:redemptions`);
 
             return response.data;
         } catch (error) {
@@ -87,7 +86,7 @@ class TwitchAuth {
             fs.writeFileSync('../settings.json', JSON.stringify(this.data, null, 4));
             
             // Start new authentication process
-            return this.authenticate();
+            return await this.authenticate();
         }
     }
 
@@ -195,7 +194,35 @@ class TwitchAuth {
             throw error;
         }
     }
+    async subscribeToChannelPointsRedeemsEvents(broadcaster_user_id, session_id) {
+        try {
+            const response = await axios.post(
+                'https://api.twitch.tv/helix/eventsub/subscriptions',
+                {
+                    type: 'channel.channel_points_custom_reward_redemption.add',
+                    version: '1',
+                    condition: {
+                        broadcaster_user_id: broadcaster_user_id
+                    },
+                    transport: {
+                        method: 'websocket',
+                        session_id: session_id
+                    }
+                },
+                {
+                    headers: {
+                        'Client-Id': this.clientId,
+                        'Authorization': `Bearer ${this.data.eventsub.eventsub_token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
 
+            return response.data;
+        } catch (error) {
+            console.error('Error subscribing to channel points redeems events:', error.response?.data || error.message);
+        }
+    }
     async subscribeToBitsEvents(broadcaster_user_id, session_id) {
         try {
             const response = await axios.post(

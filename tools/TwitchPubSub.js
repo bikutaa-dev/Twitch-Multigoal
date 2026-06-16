@@ -36,6 +36,7 @@ class TwitchPubSub {
     }
     addListen(){
         this.auth.subscribeToBitsEvents(this.broadcaster_user_id, this.session_id)
+        this.auth.subscribeToChannelPointsRedeemsEvents(this.broadcaster_user_id, this.session_id)
     }
 
     _createCreateSubscription(type, version, condition){
@@ -83,6 +84,7 @@ class TwitchPubSub {
         this.reconnect_ws.onmessage = async (event) => {
             let message = JSON.parse(event.data)
             if (message.metadata.message_type === 'session_welcome') {
+                console.log("@TwitchPubSub._gotRecconct.session_restarted")
                 this.session_id = message.payload.session.id
                 this.keepalive_timeout_seconds = message.payload.session.keepalive_timeout_seconds
                 this.keepalive_handler = setTimeout(() => {
@@ -152,6 +154,7 @@ class TwitchPubSub {
 
             switch (message.metadata.message_type) {
                 case 'session_welcome':
+                    console.log("@TwitchPubSub.session_started")
                     this.session_id = message.payload.session.id
                     this.keepalive_timeout_seconds = message.payload.session.keepalive_timeout_seconds
                     this.addListen()
@@ -168,7 +171,11 @@ class TwitchPubSub {
 
                     switch (eventType) {
                         case 'channel.bits.use': {
-                            this.callback(eventData)
+                            this.callback(eventData, "bits")
+                            break
+                        }
+                        case 'channel.channel_points_custom_reward_redemption.add': {
+                            this.callback(eventData, "channelPointsRedeems")
                             break
                         }
                     }
