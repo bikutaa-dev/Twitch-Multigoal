@@ -43,7 +43,75 @@ only use 1-9.
     you will now be prompted with new settings option the first time.
 
 
-## Problem Solving
-  - If you run into an error where in mention the folder npm not existing, "no such file or folder", just make a folder named npm at the given location.
 
+# Http API(v2.7 and later)
+If you enable the HTTP API you can now control this service from an external source, with the following HTTP JSON API.
+```
+## Points
 
+### `/api/points/{add|remove}`
+
+Add or remove points to the total. This is the same as using `addPoints(n)` or `removePoints(n)` (where `n` is 1 or more).
+
+Parameter | Type | Required | Default | Description
+----------|------|----------|---------|--------------
+points    | int  | no       | 1       | How many points to add/remove. Does not accept negative numbers.
+
+### Examples:
+- `http://localhost:8623/api/points/add` - Add 1 point
+- `http://localhost:8623/api/points/add?points=10` - Add 10 points
+- `http://localhost:8623/api/points/remove` - Remove 1 point
+- `http://localhost:8623/api/points/remove?points=10` - Remove 10 points
+
+### Responses:
+
+Code | Status                | Body
+-----|-----------------------|------
+200  | OK                    | `{ "success": true }`
+400  | Bad Request           | `{ "success": false, "code": 400, "message": "Could not parse points" }`
+500  | Internal Server Error | `{ "success": false, "code": 500, "message": "Failed to add points" }`
+500  | Internal Server Error | `{ "success": false, "code": 500, "message": "Failed to remove points" }`
+
+## Goals
+
+### `/api/goals/{add|remove}`
+
+Add or remove goals to the total. This is the same as using `addGoals(n)` or `removeGoals(n)` (where `n` is 1 or more).
+
+Parameter | Type | Required | Default | Description
+----------|------|----------|---------|--------------
+goals     | int  | no       | 1       | How many goals to add/remove. Does not accept negative numbers.
+
+#### Examples:
+- `http://localhost:8623/api/goals/add` - Add 1 point
+- `http://localhost:8623/api/goals/add?goals=10` - Add 10 goals
+- `http://localhost:8623/api/goals/remove` - Remove 1 point
+- `http://localhost:8623/api/goals/remove?goals=10` - Remove 10 goals
+
+Code | Status                | Body
+-----|-----------------------|------
+200  | OK                    | `{ "success": true }`
+400  | Bad Request           | `{ "success": false, "code": 400, "message": "Could not parse goals" }`
+500  | Internal Server Error | `{ "success": false, "code": 500, "message": "Failed to add goals" }`
+500  | Internal Server Error | `{ "success": false, "code": 500, "message": "Failed to remove goals" }`
+
+### `/api/goals/reset`
+
+Reset the goals, points, and bits. This is the same as using `resetGoal()`
+
+#### Examples:
+- `http://localhost:8623/api/goals/reset` - Reset the goals
+
+Code | Status                | Body
+-----|-----------------------|------
+200  | OK                    | `{ "success": true }`
+500  | Internal Server Error | `{ "success": false, "code": 500, "message": "Failed to reset goals" }`
+
+<!-- This is an auto-generated comment: release notes by coderabbit.ai -->
+## Summary by CodeRabbit
+
+* **New Features**
+  * Added a local JSON HTTP API for point management, including add and remove operations via `/api/points/add` and `/api/points/remove`.
+  * Added a local JSON HTTP API for goal management, including add, remove, and reset operations via `/api/goals/add`, `/api/goals/remove`, and `/api/goals/reset`.
+  * Implemented request routing with consistent JSON success/error responses and input validation for query parameters.
+<!-- end of auto-generated comment: release notes by coderabbit.ai -->
