@@ -47,7 +47,7 @@ only use 1-9.
 # Http API(v2.7 and later)
 If you enable the HTTP API you can now control this service from an external source, with the following HTTP JSON API.
 Thanks to [@AlcaDesign](https://github.com/AlcaDesign)
-```
+
 ## Points
 
 ### `/api/points/{add|remove}`
