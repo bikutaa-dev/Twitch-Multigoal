@@ -46,6 +46,7 @@ only use 1-9.
 
 # Http API(v2.7 and later)
 If you enable the HTTP API you can now control this service from an external source, with the following HTTP JSON API.
+Thanks to [https://github.com/AlcaDesign](@AlcaDesign)
 ```
 ## Points
 
@@ -106,12 +107,3 @@ Code | Status                | Body
 -----|-----------------------|------
 200  | OK                    | `{ "success": true }`
 500  | Internal Server Error | `{ "success": false, "code": 500, "message": "Failed to reset goals" }`
-
-<!-- This is an auto-generated comment: release notes by coderabbit.ai -->
-## Summary by CodeRabbit
-
-* **New Features**
-  * Added a local JSON HTTP API for point management, including add and remove operations via `/api/points/add` and `/api/points/remove`.
-  * Added a local JSON HTTP API for goal management, including add, remove, and reset operations via `/api/goals/add`, `/api/goals/remove`, and `/api/goals/reset`.
-  * Implemented request routing with consistent JSON success/error responses and input validation for query parameters.
-<!-- end of auto-generated comment: release notes by coderabbit.ai -->
