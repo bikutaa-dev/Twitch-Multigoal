@@ -48,6 +48,8 @@ only use 1-9.
 If you enable the HTTP API you can now control this service from an external source, with the following HTTP JSON API.
 Thanks to [@AlcaDesign](https://github.com/AlcaDesign)
 
+For the examples replace {port} with the port you selected.
+
 ## Points
 
 ### `/api/points/{add|remove}`
@@ -59,10 +61,10 @@ Parameter | Type | Required | Default | Description
 points    | int  | no       | 1       | How many points to add/remove. Does not accept negative numbers.
 
 ### Examples:
-- `http://localhost:8623/api/points/add` - Add 1 point
-- `http://localhost:8623/api/points/add?points=10` - Add 10 points
-- `http://localhost:8623/api/points/remove` - Remove 1 point
-- `http://localhost:8623/api/points/remove?points=10` - Remove 10 points
+- `http://localhost:{port}/api/points/add` - Add 1 point
+- `http://localhost:{port}/api/points/add?points=10` - Add 10 points
+- `http://localhost:{port}/api/points/remove` - Remove 1 point
+- `http://localhost:{port}/api/points/remove?points=10` - Remove 10 points
 
 ### Responses:
 
@@ -84,10 +86,10 @@ Parameter | Type | Required | Default | Description
 goals     | int  | no       | 1       | How many goals to add/remove. Does not accept negative numbers.
 
 #### Examples:
-- `http://localhost:8623/api/goals/add` - Add 1 point
-- `http://localhost:8623/api/goals/add?goals=10` - Add 10 goals
-- `http://localhost:8623/api/goals/remove` - Remove 1 point
-- `http://localhost:8623/api/goals/remove?goals=10` - Remove 10 goals
+- `http://localhost:{port}/api/goals/add` - Add 1 point
+- `http://localhost:{port}/api/goals/add?goals=10` - Add 10 goals
+- `http://localhost:{port}/api/goals/remove` - Remove 1 point
+- `http://localhost:{port}/api/goals/remove?goals=10` - Remove 10 goals
 
 Code | Status                | Body
 -----|-----------------------|------
@@ -101,7 +103,7 @@ Code | Status                | Body
 Reset the goals, points, and bits. This is the same as using `resetGoal()`
 
 #### Examples:
-- `http://localhost:8623/api/goals/reset` - Reset the goals
+- `http://localhost:{port}/api/goals/reset` - Reset the goals
 
 Code | Status                | Body
 -----|-----------------------|------
