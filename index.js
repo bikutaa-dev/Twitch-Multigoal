@@ -9,7 +9,6 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-let http = require("http")
 let eventsub = require("./tools/TwitchPubSub")
 let Auth = require("./tools/Auth")
 let TAPI = require("./tools/TwitchAPI")
@@ -44,6 +43,7 @@ async function askSelect(message, choices) {
 }
 
 const tmi = require('tmi.js');
+const { startHTTPAPI } = require("./tools/httpAPI")
 const defaultSettings = {
   "installed": false,
   "channel": "",
@@ -80,12 +80,14 @@ const defaultSettings = {
   "difficultyPointIncrease": 1,
   "upgradedSubsAllowed": false,
   "pointsPerUpgradedSub": 1, 
-  "version": 8,
+  "version": 9,
   "eventsub": {
     "eventsub_token": "TOKEN",
     "eventsub_refresh_token": "TOKEN",
     "eventsub_expires_in": "TOKEN"
-  }
+  },
+  "httpAPIport": 8623,
+  "shouldStartHTTPAPI": false
 };
 
 
@@ -327,8 +329,12 @@ const update = async () =>{
     await SetUpChannelPoints()
     data.version = 8
   }
-  
-  data.version = 8
+
+  if(!data.version || data.version === 8){
+    await httpSetup()
+    data.version = 9
+  }
+  data.version = 9
   save()
   
   console.log(`\n
@@ -339,6 +345,28 @@ const update = async () =>{
     -------------------------------------------------------------------------------------
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
     `)
+}
+
+async function httpSetup(){
+  console.log(`\n
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    HTTP API Setup
+    -------------------------------------------------------------------------------------
+    You can set up a HTTP API to control the multigoal from external sources. This can be
+    useful if you want to control the multigoal from a remote location.
+    -------------------------------------------------------------------------------------
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n
+    `)
+    data.shouldStartHTTPAPI = await confirm({
+      message: "Do you want to start the HTTP API?",
+      default: false,
+    })
+    if(data.shouldStartHTTPAPI){
+      data.httpAPIport = await askInt("What port should the HTTP API listen on? (number only)")
+    }else{
+      data.shouldStartHTTPAPI = false
+      data.httpAPIport = 8623
+    }
 }
 
 async function SetUpChannelPoints(){
@@ -602,6 +630,8 @@ const setup = async() =>{
     data.soundPath = ""
     data.soundVolume = 0
   }
+
+  await httpSetup()
 
   console.log(`\n
     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -980,6 +1010,45 @@ function PlaySoundFile() {
   })
 }
 
+function httpAPICallback(topic, data){
+  console.log(`${CurrentTime()}: http action: ${topic} data: ${JSON.stringify(data)}`)
+  switch(topic){
+    case "points":{
+      PointsChangeQueue("points", data.action, data.points)
+      break
+    }
+    case "goals":{
+      switch(data.action){
+        case "add":{
+          addGoals(data.goals)
+          break
+        }
+        case "remove":{
+          removeGoals(data.goals)
+          break
+        }
+        case "reset":{
+          resetGoal()
+          break
+        }
+        default:{
+          console.log(`${CurrentTime()}: http callback unknown action: ${data.action}`)
+          break
+        }
+      }
+      break
+    }
+    case "reset":{
+      resetGoal()
+      break
+    }
+    default:{
+      console.log(`${CurrentTime()}: http callback unknown topic: ${topic}`)
+      break
+    }
+  }
+}
+
 function twitchEventsubCallback(message, type){
   if(type === "bits"){
     console.log(`${CurrentTime()}: From: ${message.user_name}, cheered: ${message.bits}`)
@@ -989,6 +1058,8 @@ function twitchEventsubCallback(message, type){
     PointsChangeQueue("points", data.channelPointsRedeemsTriggerList[message.reward.id].action, data.channelPointsRedeemsTriggerList[message.reward.id].points)
   }
 }
+
+
 
 async function HandleTwitchAuth(){
   if(data.token !== "TOKEN" || data.cheerMode !== "off" || data.chatMessage !== "" || data.shouldchannelPointsRedeemsTrigger){
@@ -1148,11 +1219,6 @@ const playSound = () => {
   PlaySoundFile()
 }
 
-const channelPoints = async() => {
-  await SetUpChannelPoints()
-  console.log("Channel points set up")
-}
-
 function startCommandLoop() {
   commandLoopOpen = true
   commandRl = readline.createInterface({
@@ -1263,181 +1329,15 @@ const TwitchAuth = new Auth(data, data.eventsub)
 const TwitchAPI = new TAPI(data, TwitchAuth)
 const TwitchEventsub = new eventsub(data, TwitchAuth, twitchEventsubCallback.bind(this))
 
-{
-  const httpServerPort = 8623
-  /** @param {any[]} args */
-  const log = (...args) => console.log("[HTTP Server]", ...args)
-  /** @type {(res: http.ServerResponse, body: any, code?: number) => void} */
-  const json = (res, body, code = 200) => {
-    if(body instanceof Promise) throw new Error("JSON response body was a Promise")
-    if(res.headersSent) throw new Error("Headers already sent")
-    res.writeHead(code, { "Content-Type": "application/json" })
-    res.end(JSON.stringify(body))
-  }
-  /** @type {(res: http.ServerResponse, message: string, code: number) => void} */
-  const jsonError = (res, message, code) => {
-    json(res, { success: false, code, message }, code)
-  }
-  /**
-   * @typedef {(typeof http.IncomingMessage) & { parsedUrl: URL; }} IncomingMessageExtended
-   * @typedef {(req: IncomingMessageExtended, res: http.ServerResponse) => any} RouteHandler
-   */
-  const serverRoutes = {
-    /** @type {Record<string, Record<string, RouteHandler>>} */
-    api: {
-      points: {
-        add(req, res) {
-          let pointsChange = 1
-          const pointsInput = req.parsedUrl.searchParams.get("points")
-          if(pointsInput) {
-            const value = parseInt(pointsInput, 10)
-            if(Number.isNaN(value) && isFinite(value)) {
-              pointsChange = Math.max(0, value)
-            }
-            else {
-              log("Could not parse points input:", { pointsInput })
-              jsonError(res, "Could not parse points", 400)
-              return
-            }
-          }
-          try {
-            addPoints(pointsChange)
-            json(res, { success: true })
-          } catch(err) {
-            log("Failed to add points:", { pointsChange }, err)
-            jsonError(res, "Failed to add points", 500)
-          }
-        },
-        remove(req, res) {
-          let pointsChange = 1
-          const pointsInput = req.parsedUrl.searchParams.get("points")
-          if(pointsInput) {
-            const value = parseInt(pointsInput, 10)
-            if(Number.isNaN(value) && isFinite(value)) {
-              pointsChange = Math.max(0, value)
-            }
-            else {
-              log("Could not parse points input:", { pointsInput })
-              jsonError(res, "Could not parse points", 400)
-              return
-            }
-          }
-          try {
-            removePoints(pointsChange)
-            json(res, { success: true })
-          } catch(err) {
-            log("Failed to remove points:", { pointsChange }, err)
-            jsonError(res, "Failed to remove points", 500)
-          }
-        },
-      },
-      goals: {
-        add(req, res) {
-          let goalsChange = 1
-          const goalsInput = req.parsedUrl.searchParams.get("goals")
-          if(goalsInput) {
-            const value = parseInt(goalsInput, 10)
-            if(Number.isNaN(value) && isFinite(value)) {
-              goalsChange = Math.max(0, value)
-            }
-            else {
-              log("Could not parse goals input:", { goalsInput })
-              jsonError(res, "Could not parse goals", 400)
-              return
-            }
-          }
-          try {
-            addGoals(goalsChange)
-            json(res, { success: true })
-          } catch(err) {
-            log("Failed to add goals:", { goalsChange }, err)
-            jsonError(res, "Failed to add goals", 500)
-          }
-        },
-        remove(req, res) {
-          let goalsChange = 1
-          const goalsInput = req.parsedUrl.searchParams.get("goals")
-          if(goalsInput) {
-            const value = parseInt(goalsInput, 10)
-            if(Number.isNaN(value) && isFinite(value)) {
-              goalsChange = Math.max(0, value)
-            }
-            else {
-              log("Could not parse goals input:", { goalsInput })
-              jsonError(res, "Could not parse goals", 400)
-              return
-            }
-          }
-          try {
-            removeGoals(goalsChange)
-            json(res, { success: true })
-          } catch(err) {
-            log("Failed to remove goals:", { goalsChange }, err)
-            jsonError(res, "Failed to remove goals", 500)
-          }
-        },
-        reset(req, res) {
-          try {
-            resetGoal()
-            json(res, { success: true })
-          } catch(err) {
-            log("Failed to reset goal", err)
-            jsonError(res, "Failed to reset goal", 500)
-          }
-        },
-      }
-    }
-  }
-  /**
-   * @type {http.Server<IncomingMessageExtended, typeof http.ServerResponse>}
-   */
-  const httpServer = http.createServer((incomingReq, res) => {
-    const url = new URL(`http://localhost:${httpServerPort}${incomingReq.url}`)
-    const pathParts = url.pathname.replace(/\+/g, "%20")
-      .split("/")
-      .map(n => decodeURIComponent(n).trim())
-      .filter(n => n)
-    /** @type {IncomingMessageExtended} */
-    // @ts-ignore
-    const req = Object.assign(incomingReq, {
-      parsedUrl: url
-    })
-    try {
-      /** @type {(Record<string, Record<string, Record<string, RouteHandler>>> | Record<string, Record<string, RouteHandler>> | Record<string, RouteHandler>) | RouteHandler} */
-      let routes = serverRoutes
-      while(pathParts.length) {
-        const part = pathParts.shift()
-        if(!part || part in routes === false) {
-          break
-        }
-        routes = routes[part]
-        if(typeof routes === "function") {
-          (/** @type {RouteHandler} */ (routes))(req, res)
-          return
-        }
-      }
-      if(routes && typeof routes === "object" && "index" in routes) {
-        // @ts-ignore
-        routes.index(req, res)
-        return
-      }
-      jsonError(res, `Not Found: "${url.pathname}"`, 404)
-    } catch(err) {
-      log(err)
-      jsonError(res, "Internal Server Error", 500)
-    }
-  })
-  httpServer.listen(httpServerPort, "127.0.0.1", () => {
-    log(`Listening on http://127.0.0.1:${httpServerPort}`)
-  })
-}
+
+
 
 async function main() {
   
   if(!data.installed){
     await setup()
   }else{
-    if(!data.version || data.version < 8){
+    if(!data.version || data.version < 9){
       await update()
     }
   }
@@ -1450,6 +1350,14 @@ async function main() {
     resetGoal()
   }
   await HandleTwitchAuth()
+  if(data.shouldStartHTTPAPI){
+    const httpServer = startHTTPAPI(httpAPICallback.bind(this), data.httpAPIport)
+    if(httpServer){
+      httpServer.on("error", (err) => {
+        console.error("HTTP server error:", err)
+      })
+    }
+  }
   execute()
   startCommandLoop()
 }
