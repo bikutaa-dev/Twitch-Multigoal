@@ -1,6 +1,6 @@
 {
   "name": "twitch-multigoal",
-  "version": "2.5",
+  "version": "2.7",
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js"
