@@ -4,7 +4,7 @@ over a stream. With subscriptions (normal or gifted), hype chats and cheers the 
 to you what the reward is for reaching the goal, but when a goal is reached it resets and starts all over again, now also with the option to
 increase the goal each time it has been reached.
 
-The scripts allow you to set up the points value for subs, hype chats and cheers and also what the goal is. It also supports:
+The scripts allow you to set up the points value for subs, hype chats, redeems and cheers and also what the goal is. It also supports:
 - Sound when the goal has been reached.
 - Chat message when the goal has ben reached.
 - A way to show the progress on stream with a text file.
@@ -45,7 +45,7 @@ only use 1-9.
 
 
 # Http API(v2.7 and later)
-If you enable the HTTP API you can now control this service from an external source, with the following HTTP JSON API.
+If you enable the HTTP API you can now control this script from an external source, with the following HTTP JSON API.
 Thanks to [@AlcaDesign](https://github.com/AlcaDesign)
 
 For the examples replace {port} with the port you selected.
